@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: flowdesk_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flowdesk
+      POSTGRES_USER: flowdesk_user
+      POSTGRES_PASSWORD: flowdesk_password_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - flowdesk_network
+
+  # Redis for Caching and Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: flowdesk_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - flowdesk_network
+
+  # FastAPI Backend
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowdesk_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://flowdesk_user:flowdesk_password_2024@db:5432/flowdesk
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - ENVIRONMENT=development
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./frontend:/app/frontend
+    networks:
+      - flowdesk_network
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Nginx (Production)
+  nginx:
+    image: nginx:alpine
+    container_name: flowdesk_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./frontend:/usr/share/nginx/html/static
+    depends_on:
+      - backend
+    networks:
+      - flowdesk_network
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  flowdesk_network:
+    driver: bridge

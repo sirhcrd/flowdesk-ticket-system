@@ -1,0 +1,129 @@
+/* Custom styles for FlowDesk */
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Focus styles */
+.focus-ring {
+    @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900;
+}
+
+/* Custom button styles */
+.btn-primary {
+    @apply bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium px-4 py-2 rounded-md shadow-sm transition-all duration-200 transform hover:scale-105 focus:scale-105;
+}
+
+.btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium px-4 py-2 rounded-md transition-colors duration-200;
+}
+
+/* Card hover effects */
+.card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1;
+}
+
+/* Status indicators */
+.status-indicator {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+/* Priority badges */
+.priority-low {
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300;
+}
+
+.priority-medium {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-300;
+}
+
+.priority-high {
+    @apply bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-300;
+}
+
+.priority-urgent {
+    @apply bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-300;
+}
+
+/* Loading spinner */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Glass morphism effect */
+.glass {
+    @apply backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-white/20 dark:border-gray-700/20;
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-secondary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.gradient-success {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* Dark mode transitions */
+* {
+    @apply transition-colors duration-300;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 640px) {
+    .mobile-padding {
+        @apply px-4;
+    }
+    
+    .mobile-text {
+        @apply text-sm;
+    }
+}
