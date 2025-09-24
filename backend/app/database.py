@@ -2,10 +2,14 @@ from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, B
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from sqlalchemy.sql import func
-from decouple import config
+import os
 
 # Database URL from environment variables
-DATABASE_URL = config("DATABASE_URL", default="postgresql://user:password@localhost/flowdesk")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/flowdesk")
+
+# Handle Railway's postgres:// format (convert to postgresql://)
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

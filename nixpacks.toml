@@ -1,13 +1,16 @@
 # Nixpacks configuration for FlowDesk
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.11"
+PYTHONPATH = "/app/backend"
+
+[phases.setup]
+nixPkgs = ["python311", "pip"]
+
+[phases.install]
+cmd = "pip install -r requirements.txt"
+
 [phases.build]
-cmds = [
-  "cd backend",
-  "pip install -r requirements.txt"
-]
+cmd = "echo 'Build complete'"
 
 [phases.start]
-cmd = "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
-
-[variables]
-PYTHONPATH = "/app/backend"
-NIXPACKS_PYTHON_VERSION = "3.11"
+cmd = "./start.sh"
