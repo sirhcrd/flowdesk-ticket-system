@@ -16,3 +16,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Development files (not needed for GitHub Pages)
+docs/
