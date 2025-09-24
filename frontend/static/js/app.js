@@ -1,197 +1,135 @@
-// FlowDesk Frontend Application
+// FlowDesk Frontend-Only Application with Local Storage
 document.addEventListener('alpine:init', () => {
     Alpine.data('app', () => ({
         // State
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
         darkMode: localStorage.getItem('darkMode') === 'true' || false,
         currentView: 'dashboard',
-        error: '',
         
-        // Data
-        tickets: [],
-        recentTickets: [],
-        users: [],
-        stats: {
-            total: 0,
-            open: 0,
-            in_progress: 0,
-            resolved: 0,
-            closed: 0
-        },
+        // Data (stored locally)
+        tickets: JSON.parse(localStorage.getItem('flowdesk_tickets') || '[]'),
+        users: JSON.parse(localStorage.getItem('flowdesk_users') || '[{"id":1,"name":"Admin","email":"admin@flowdesk.com"}]'),
+        nextId: parseInt(localStorage.getItem('flowdesk_next_id') || '1'),
         
         // Forms
-        loginForm: {
-            email: '',
-            password: ''
-        },
         newTicket: {
             title: '',
             description: '',
             priority: 'medium',
-            assignee_id: ''
+            assignee: 'Admin',
+            tags: ''
         },
         
         // UI State
         showCreateTicket: false,
-        
-        // WebSocket
-        websocket: null,
+        selectedTicket: null,
+        showTicketDetail: false,
         
         // Initialize
         init() {
-            this.checkAuth();
-            this.initWebSocket();
+            // Load sample data if first time
+            if (this.tickets.length === 0) {
+                this.loadSampleData();
+            }
             
-            // Check for saved theme preference
+            // Apply theme
             if (this.darkMode) {
                 document.documentElement.classList.add('dark');
             }
         },
         
-        // Authentication
-        async checkAuth() {
-            const token = localStorage.getItem('access_token');
-            if (!token) {
-                this.isAuthenticated = false;
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/auth/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                if (response.ok) {
-                    this.user = await response.json();
-                    this.isAuthenticated = true;
-                    await this.loadDashboardData();
-                } else {
-                    localStorage.removeItem('access_token');
-                    this.isAuthenticated = false;
+        // Local Storage Management
+        saveToStorage() {
+            localStorage.setItem('flowdesk_tickets', JSON.stringify(this.tickets));
+            localStorage.setItem('flowdesk_users', JSON.stringify(this.users));
+            localStorage.setItem('flowdesk_next_id', this.nextId.toString());
+        },
+        
+        loadSampleData() {
+            this.tickets = [
+                {
+                    id: 1,
+                    title: 'Welcome to FlowDesk!',
+                    description: 'This is a sample ticket. You can create, edit, and manage tickets locally in your browser. All data is saved locally.',
+                    status: 'open',
+                    priority: 'medium',
+                    assignee: 'Admin',
+                    creator: 'System',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    tags: ['welcome', 'demo']
+                },
+                {
+                    id: 2,
+                    title: 'Export Feature Available',
+                    description: 'You can export your tickets to Excel or CSV format using the export buttons in the toolbar.',
+                    status: 'resolved',
+                    priority: 'low',
+                    assignee: 'Admin',
+                    creator: 'System',
+                    created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+                    updated_at: new Date().toISOString(),
+                    tags: ['feature', 'export']
                 }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                this.isAuthenticated = false;
+            ];
+            this.nextId = 3;
+            this.saveToStorage();
+        },
+        
+        // Ticket Management
+        createTicket() {
+            const ticket = {
+                id: this.nextId++,
+                title: this.newTicket.title,
+                description: this.newTicket.description,
+                status: 'open',
+                priority: this.newTicket.priority,
+                assignee: this.newTicket.assignee,
+                creator: 'Current User',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                tags: this.newTicket.tags ? this.newTicket.tags.split(',').map(t => t.trim()) : []
+            };
+            
+            this.tickets.unshift(ticket);
+            this.saveToStorage();
+            this.resetNewTicketForm();
+            this.showCreateTicket = false;
+        },
+        
+        updateTicketStatus(ticketId, newStatus) {
+            const ticket = this.tickets.find(t => t.id === ticketId);
+            if (ticket) {
+                ticket.status = newStatus;
+                ticket.updated_at = new Date().toISOString();
+                this.saveToStorage();
             }
         },
         
-        async login() {
-            this.isLoading = true;
-            this.error = '';
-            
-            try {
-                const formData = new FormData();
-                formData.append('username', this.loginForm.email);
-                formData.append('password', this.loginForm.password);
-                
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    localStorage.setItem('access_token', data.access_token);
-                    await this.checkAuth();
-                } else {
-                    const errorData = await response.json();
-                    this.error = errorData.detail || 'Login failed';
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                this.error = 'Network error. Please try again.';
-            } finally {
-                this.isLoading = false;
+        deleteTicket(ticketId) {
+            if (confirm('Are you sure you want to delete this ticket?')) {
+                this.tickets = this.tickets.filter(t => t.id !== ticketId);
+                this.saveToStorage();
             }
         },
         
-        logout() {
-            localStorage.removeItem('access_token');
-            this.isAuthenticated = false;
-            this.user = null;
-            this.currentView = 'dashboard';
-            
-            // Close WebSocket connection
-            if (this.websocket) {
-                this.websocket.close();
-                this.websocket = null;
-            }
+        viewTicket(ticket) {
+            this.selectedTicket = ticket;
+            this.showTicketDetail = true;
         },
         
-        // WebSocket
-        initWebSocket() {
-            if (!this.isAuthenticated) return;
-            
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/${this.user?.id || 'anonymous'}`;
-            
-            this.websocket = new WebSocket(wsUrl);
-            
-            this.websocket.onopen = () => {
-                console.log('WebSocket connected');
-            };
-            
-            this.websocket.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                this.handleWebSocketMessage(message);
-            };
-            
-            this.websocket.onclose = () => {
-                console.log('WebSocket disconnected');
-                // Attempt to reconnect after 5 seconds
-                if (this.isAuthenticated) {
-                    setTimeout(() => this.initWebSocket(), 5000);
-                }
-            };
-            
-            this.websocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
+        resetNewTicketForm() {
+            this.newTicket = {
+                title: '',
+                description: '',
+                priority: 'medium',
+                assignee: 'Admin',
+                tags: ''
             };
         },
         
-        handleWebSocketMessage(message) {
-            switch (message.type) {
-                case 'ticket_created':
-                case 'ticket_updated':
-                    this.loadDashboardData();
-                    break;
-                case 'comment_added':
-                    // Refresh current ticket if viewing
-                    break;
-                default:
-                    console.log('Unknown message type:', message.type);
-            }
-        },
-        
-        // Data Loading
-        async loadDashboardData() {
-            if (!this.isAuthenticated) return;
-            
-            try {
-                // Load tickets
-                const ticketsResponse = await this.apiCall('/api/tickets/');
-                if (ticketsResponse.ok) {
-                    this.tickets = await ticketsResponse.json();
-                    this.recentTickets = this.tickets.slice(0, 5);
-                    this.calculateStats();
-                }
-                
-                // Load users
-                const usersResponse = await this.apiCall('/api/users/');
-                if (usersResponse.ok) {
-                    this.users = await usersResponse.json();
-                }
-            } catch (error) {
-                console.error('Failed to load dashboard data:', error);
-            }
-        },
-        
-        calculateStats() {
-            this.stats = {
+        // Statistics
+        get stats() {
+            return {
                 total: this.tickets.length,
                 open: this.tickets.filter(t => t.status === 'open').length,
                 in_progress: this.tickets.filter(t => t.status === 'in_progress').length,
@@ -200,61 +138,70 @@ document.addEventListener('alpine:init', () => {
             };
         },
         
-        // API Helper
-        async apiCall(url, options = {}) {
-            const token = localStorage.getItem('access_token');
-            const defaultOptions = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                ...options
-            };
+        get recentTickets() {
+            return this.tickets.slice(0, 5);
+        },
+        
+        // Export Functions
+        exportToCSV() {
+            const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Assignee', 'Creator', 'Created', 'Updated', 'Tags'];
+            const csvContent = [
+                headers.join(','),
+                ...this.tickets.map(ticket => [
+                    ticket.id,
+                    `"${ticket.title}"`,
+                    `"${ticket.description}"`,
+                    ticket.status,
+                    ticket.priority,
+                    ticket.assignee,
+                    ticket.creator,
+                    new Date(ticket.created_at).toLocaleDateString(),
+                    new Date(ticket.updated_at).toLocaleDateString(),
+                    `"${ticket.tags ? ticket.tags.join(', ') : ''}"`
+                ].join(','))
+            ].join('\\n');
             
-            return fetch(url, defaultOptions);
+            this.downloadFile(csvContent, 'flowdesk-tickets.csv', 'text/csv');
         },
         
-        // Ticket Management
-        async createTicket() {
-            this.isLoading = true;
+        exportToExcel() {
+            // Create HTML table for Excel
+            const table = `
+                <table>
+                    <tr>
+                        <th>ID</th><th>Title</th><th>Description</th><th>Status</th><th>Priority</th>
+                        <th>Assignee</th><th>Creator</th><th>Created</th><th>Updated</th><th>Tags</th>
+                    </tr>
+                    ${this.tickets.map(ticket => `
+                        <tr>
+                            <td>${ticket.id}</td>
+                            <td>${ticket.title}</td>
+                            <td>${ticket.description}</td>
+                            <td>${ticket.status}</td>
+                            <td>${ticket.priority}</td>
+                            <td>${ticket.assignee}</td>
+                            <td>${ticket.creator}</td>
+                            <td>${new Date(ticket.created_at).toLocaleDateString()}</td>
+                            <td>${new Date(ticket.updated_at).toLocaleDateString()}</td>
+                            <td>${ticket.tags ? ticket.tags.join(', ') : ''}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
             
-            try {
-                const response = await this.apiCall('/api/tickets/', {
-                    method: 'POST',
-                    body: JSON.stringify(this.newTicket)
-                });
-                
-                if (response.ok) {
-                    const ticket = await response.json();
-                    this.tickets.unshift(ticket);
-                    this.showCreateTicket = false;
-                    this.resetNewTicketForm();
-                    await this.loadDashboardData();
-                } else {
-                    const errorData = await response.json();
-                    this.error = errorData.detail || 'Failed to create ticket';
-                }
-            } catch (error) {
-                console.error('Create ticket error:', error);
-                this.error = 'Network error. Please try again.';
-            } finally {
-                this.isLoading = false;
-            }
+            this.downloadFile(table, 'flowdesk-tickets.xls', 'application/vnd.ms-excel');
         },
         
-        resetNewTicketForm() {
-            this.newTicket = {
-                title: '',
-                description: '',
-                priority: 'medium',
-                assignee_id: ''
-            };
-        },
-        
-        viewTicket(ticketId) {
-            // Navigate to ticket detail view
-            console.log('View ticket:', ticketId);
-            // This would be implemented with a router or detailed view
+        downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
         },
         
         // UI Helpers

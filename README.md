@@ -1,150 +1,101 @@
 # 🎫 FlowDesk - Modern Ticket System
 
-A production-ready ticket management system built with FastAPI, PostgreSQL, and modern web technologies. Features real-time updates, email notifications, and a beautiful responsive interface.
+A lightweight, frontend-only ticket management system that runs entirely in your browser. No backend required - all data is stored locally with export capabilities.
 
 ## ✨ Features
 
 - 🎨 **Modern UI** - Beautiful interface with dark/light themes using Tailwind CSS
-- ⚡ **Real-time Updates** - WebSocket integration for live notifications
-- 🔐 **Secure Authentication** - JWT-based auth with role-based access control
-- 📧 **Email Notifications** - Automated notifications for ticket updates
+- 💾 **Local Storage** - All data stored in your browser (no server required)
+- � **Export Ready** - Export to CSV or Excel formats
 - 📱 **Mobile Responsive** - Works perfectly on all device sizes
-- 🚀 **Production Ready** - Docker containerization with CI/CD pipeline
-- 🔍 **Advanced Search** - Filter tickets by status, priority, assignee, and more
-- 🏷️ **Smart Tagging** - Organize tickets with customizable tags
-- 📊 **Analytics Dashboard** - Track ticket metrics and team performance
+- 🚀 **GitHub Pages Ready** - Deploy for free on GitHub Pages
+- 🔍 **Smart Filtering** - Filter tickets by status, priority, and more
+- 🏷️ **Tagging System** - Organize tickets with custom tags
+- 📊 **Analytics Dashboard** - Track ticket metrics in real-time
+- 🌙 **Dark/Light Theme** - Toggle between themes with preference saving
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **FastAPI** - Modern Python web framework with automatic API docs
-- **PostgreSQL** - Robust relational database with full-text search
-- **SQLAlchemy** - Powerful ORM with Alembic migrations
-- **Redis** - Caching and session management
-- **WebSockets** - Real-time bidirectional communication
-- **Celery** - Asynchronous task processing
-- **SendGrid** - Email delivery service
-
-### Frontend
 - **HTML5 + CSS3** - Semantic markup and modern styling
-- **Tailwind CSS** - Utility-first CSS framework
-- **Alpine.js** - Lightweight JavaScript framework
-- **WebSocket API** - Real-time UI updates
-
-### DevOps
-- **Docker & Docker Compose** - Containerization
-- **GitHub Actions** - CI/CD automation
-- **Railway/Render** - Cloud deployment platforms
-- **Nginx** - Reverse proxy and static file serving
+- **Tailwind CSS** - Utility-first CSS framework for beautiful designs
+- **Alpine.js** - Lightweight JavaScript framework for reactivity
+- **Local Storage** - Browser-based data persistence
+- **GitHub Pages** - Free hosting and deployment
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Docker and Docker Compose
-- Git
-- (Optional) Python 3.11+ for local development
+### Option 1: Use Live Demo
+Visit the live demo at: **[https://sirhcrd.github.io/flowdesk-ticket-system](https://sirhcrd.github.io/flowdesk-ticket-system)**
 
-### Option 1: Docker Setup (Recommended)
+### Option 2: Run Locally
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/flowdesk.git
-   cd flowdesk
+   git clone https://github.com/sirhcrd/flowdesk-ticket-system.git
+   cd flowdesk-ticket-system
    ```
 
-2. **Create environment file**
+2. **Serve the frontend**
    ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Start the services**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the application**
-   - Web Interface: http://localhost:8000
-   - API Documentation: http://localhost:8000/api/docs
-   - Admin Panel: http://localhost:8000 (admin@flowdesk.com / admin123)
-
-### Option 2: Local Development
-
-1. **Backend setup**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-2. **Database setup**
-   ```bash
-   # Start PostgreSQL and Redis
-   docker-compose up -d db redis
+   # Option A: Python simple server
+   cd frontend
+   python -m http.server 8000
    
-   # Run migrations
-   alembic upgrade head
+   # Option B: Node.js serve
+   cd frontend  
+   npx serve .
+   
+   # Option C: Any static file server
    ```
 
-3. **Start the backend**
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-4. **Open your browser**
+3. **Open your browser**
    - Navigate to http://localhost:8000
+   - Start creating and managing tickets!
 
-## 📖 API Documentation
+### Option 3: Deploy to GitHub Pages
 
-The API is fully documented with OpenAPI/Swagger. Access the interactive documentation at:
-- **Swagger UI**: http://localhost:8000/api/docs
-- **ReDoc**: http://localhost:8000/api/redoc
+1. **Fork this repository**
+2. **Go to Settings → Pages**
+3. **Select "Deploy from a branch"**
+4. **Choose "main" branch and "/frontend" folder**
+5. **Your site will be live at `https://yourusername.github.io/flowdesk-ticket-system`**
 
-### Key Endpoints
+## � Data Management
 
+### Local Storage
+- **All data** is stored in your browser's local storage
+- **Persistent** across browser sessions
+- **Private** - data never leaves your computer
+- **Exportable** - download your data anytime
+
+### Export Options
+
+**CSV Export:**
 ```
-POST   /api/auth/login          # User authentication
-POST   /api/auth/register       # User registration
-GET    /api/auth/me            # Current user info
-
-GET    /api/tickets            # List tickets (with filtering)
-POST   /api/tickets            # Create new ticket
-GET    /api/tickets/{id}       # Get ticket details
-PUT    /api/tickets/{id}       # Update ticket
-DELETE /api/tickets/{id}       # Delete ticket
-
-POST   /api/tickets/{id}/comments  # Add comment to ticket
-GET    /api/users              # List users
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Key configuration options in `.env`:
-
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/flowdesk
-
-# Security
-SECRET_KEY=your-super-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# Email (SendGrid)
-SENDGRID_API_KEY=your-sendgrid-key
-FROM_EMAIL=noreply@yourcompany.com
-
-# Redis
-REDIS_URL=redis://localhost:6379/0
+ID,Title,Description,Status,Priority,Assignee,Creator,Created,Updated,Tags
+1,"Sample Ticket","Description here",open,medium,Admin,User,9/24/2025,9/24/2025,"bug,frontend"
 ```
 
-### User Roles
+**Excel Export:**
+- **Formatted table** with headers
+- **Compatible** with Microsoft Excel, Google Sheets, LibreOffice
+- **Preserves data types** and formatting
 
-- **Admin**: Full system access, user management
-- **Agent**: Ticket management, can be assigned tickets
-- **User**: Can create tickets and comment on own tickets
+## 🎨 Customization
+
+### Themes
+- **Light Theme** - Clean, professional appearance
+- **Dark Theme** - Easy on the eyes for long sessions
+- **Auto-detection** - Respects system preference
+- **Persistent** - Remembers your choice
+
+### Ticket Fields
+- **Title** - Brief description
+- **Description** - Detailed information
+- **Status** - Open, In Progress, Resolved, Closed
+- **Priority** - Low, Medium, High, Urgent
+- **Assignee** - Person responsible
+- **Tags** - Custom labels for organization
 
 ## 🚀 Deployment
 
