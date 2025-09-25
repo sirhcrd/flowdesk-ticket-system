@@ -244,6 +244,9 @@ class GitHubOAuth {
         await this.fetchUserInfo();
         
         console.log('👤 User authenticated:', this.user?.login);
+        
+                // Trigger Alpine.js reactivity update\n        setTimeout(() => {\n            // Dispatch a custom event that Alpine can listen to\n            window.dispatchEvent(new CustomEvent('auth-state-changed'));\n        }, 100);
+        
         return true;
     }
 

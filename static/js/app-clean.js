@@ -7,8 +7,7 @@ document.addEventListener('alpine:init', () => {
         dbReady: false,
         loading: false,
         
-        // Data
-        tickets: [],
+                // Authentication state\n        authenticationState: false,\n        \n        // Data\n        tickets: [],
         users: [],
         currentUser: null,
         kanbanColumns: [],
@@ -62,36 +61,36 @@ document.addEventListener('alpine:init', () => {
 
         // Initialize
         async init() {
-            console.log('🚀 Initializing FlowDesk Collaborative...');
+            console.log('🚀 FlowDesk Collaborative starting...');
             
-            // Apply theme
-            if (this.darkMode) {
-                document.documentElement.classList.add('dark');
-            }
+            // Apply theme immediately
+            this.toggleTheme();
             
-            try {
-                this.loading = true;
-                
-                // Initialize GitHub database (will try to load public data)
-                await window.githubDB.init();
-                await this.loadDataFromGitHub();
-                
-                this.dbReady = true;
-                console.log('✅ FlowDesk Collaborative ready!');
-                
-                // Check if user is returning from OAuth
+            // Listen for authentication state changes
+            window.addEventListener('auth-state-changed', async () => {
+                console.log('🔄 Auth state changed - refreshing data');
                 if (window.githubAuth.isAuthenticated()) {
-                    console.log('🔑 User is authenticated with GitHub');
+                    this.githubUser = window.githubAuth.getUser();
+                    await this.loadDataFromGitHub();
                 }
-                
-            } catch (error) {
-                console.error('❌ Failed to initialize:', error);
-                // Don't block the app if GitHub is unavailable
-                this.dbReady = false;
-                console.log('📱 Running in offline mode');
-            } finally {
-                this.loading = false;
+                // Force reactivity update
+                this.authenticationState = !this.authenticationState;
+                this.authenticationState = !this.authenticationState;
+            });
+            
+            // Initialize GitHub authentication and database
+            await this.initGitHubServices();
+            
+            // Load data if authenticated
+            if (window.githubAuth.isAuthenticated()) {
+                this.githubUser = window.githubAuth.getUser();
+                await this.loadDataFromGitHub();
             }
+            
+            // Handle OAuth callback
+            await this.handleOAuthCallback();
+            
+            console.log('✅ FlowDesk initialization complete');
         },
 
         async loadDataFromGitHub() {
@@ -224,7 +223,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         get isAuthenticated() {
-            return window.githubAuth ? window.githubAuth.isAuthenticated() : false;
+            // Use both the auth state and reactive property to trigger updates
+            const authState = window.githubAuth ? window.githubAuth.isAuthenticated() : false;
+            this.authenticationState = authState; // This makes it reactive
+            return authState;
         },
 
         get githubUser() {
@@ -691,6 +693,8 @@ document.addEventListener('alpine:init', () => {
                 alert('Download failed: ' + error.message);
             }
         },
+
+        
 
         // UI Helpers
         toggleTheme() {
