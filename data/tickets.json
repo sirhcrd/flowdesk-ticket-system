@@ -3,7 +3,7 @@
     {
       "id": 1,
       "title": "Welcome to FlowDesk Collaborative!",
-      "description": "This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!",
+      "description": "This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!\n\nChange",
       "status": "open",
       "priority": "medium",
       "assignee_id": 2,
@@ -11,12 +11,13 @@
       "kanban_column_id": 1,
       "kanban_position": 0,
       "created_at": "2025-09-25T10:00:00.000Z",
-      "updated_at": "2025-09-25T15:30:00.000Z",
+      "updated_at": "2025-09-25T17:38:44.189Z",
       "tags": [
         "welcome",
         "collaboration",
         "github"
-      ]
+      ],
+      "updated_by": 1
     },
     {
       "id": 2,
@@ -54,7 +55,7 @@
     }
   ],
   "nextId": 4,
-  "lastUpdated": "2025-09-25T17:17:06.485Z",
+  "lastUpdated": "2025-09-25T17:38:44.189Z",
   "version": "3.0",
   "updatedBy": "sirhcrd"
 }
