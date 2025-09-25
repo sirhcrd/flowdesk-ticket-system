@@ -108,11 +108,25 @@ A modern, collaborative ticket management system that uses GitHub as a database 
 4. **Client ID**: Copy this to `static/js/github-oauth.js`
 5. **Client Secret**: Add to Netlify environment variables
 
-### Repository Configuration
-The app uses GitHub repository JSON files for data storage:
+### Data Storage Configuration
+**IMPORTANT**: FlowDesk uses a **separate GitHub repository** for data storage to prevent data loss during code deployments.
+
+**First Time Setup:**
+1. After signing in, you'll be prompted to configure your data repository
+2. Choose to use the default `flowdesk-data` repository (recommended)
+3. The repository will be created automatically if it doesn't exist
+4. All your tickets, columns, and settings will be stored there
+
+**Data Repository Structure:**
 - `data/tickets.json` - All ticket data
-- `data/users.json` - Team member information
-- `data/settings.json` - Application configuration
+- `data/users.json` - Team member information  
+- `data/columns.json` - Kanban column definitions
+- `data/activities.json` - Ticket activity history
+
+**Team Collaboration:**
+- Share your data repository name with team members
+- They'll be prompted to enter the same repository name
+- Everyone accesses the same shared ticket data
 
 ### Environment Variables
 Required Netlify environment variables:
@@ -190,11 +204,18 @@ netlify dev
 ## 🤝 Collaboration
 
 ### Team Setup
-1. **Repository Access**: Add team members as collaborators to your data repository
-2. **Permission Levels**: 
+1. **Data Repository**: Create or use existing data repository (e.g., `username/flowdesk-data`)
+2. **Team Access**: Add team members as collaborators to your **data repository**
+3. **Repository Configuration**: Each team member enters the same data repository name when prompted
+4. **Permission Levels**: 
    - **Admin**: Full access (repository admin)
    - **User**: Read/write access (repository collaborator)
-3. **Sync**: Changes automatically sync across all team members
+5. **Automatic Sync**: Changes sync across all team members through GitHub
+
+### Important Notes
+- **Code Repository**: `sirhcrd/flowdesk-ticket-system` (this repo - contains the application)
+- **Data Repository**: `your-username/flowdesk-data` (your data - tickets, columns, etc.)
+- **Separation Benefits**: Code updates never affect your ticket data!
 
 ### Data Sharing
 - All ticket data is stored in shared GitHub repository
