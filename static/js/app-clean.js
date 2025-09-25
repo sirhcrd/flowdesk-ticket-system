@@ -70,7 +70,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('auth-state-changed', async () => {
                 console.log('🔄 Auth state changed - refreshing data');
                 if (window.githubAuth.isAuthenticated()) {
-                    this.githubUser = window.githubAuth.getUser();
+                    this.githubUser = window.githubAuth.getCurrentUser();
                     await this.loadDataFromGitHub();
                 }
                 // Force reactivity update
@@ -83,7 +83,7 @@ document.addEventListener('alpine:init', () => {
             
             // Load data if authenticated
             if (window.githubAuth.isAuthenticated()) {
-                this.githubUser = window.githubAuth.getUser();
+                this.githubUser = window.githubAuth.getCurrentUser();
                 await this.loadDataFromGitHub();
             }
             

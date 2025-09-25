@@ -45,7 +45,7 @@ class GitHubDatabase {
         if (this.baseURL) return true;
         
         // Get authenticated user
-        const user = this.auth?.getUser();
+        const user = this.auth?.getCurrentUser();
         if (!user) {
             throw new Error('GitHub authentication required');
         }
