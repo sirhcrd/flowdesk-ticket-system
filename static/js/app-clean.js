@@ -137,7 +137,13 @@ document.addEventListener('alpine:init', () => {
         // Authentication methods
         async loginWithGitHub() {
             try {
-                await window.githubDB.authenticate();
+                await window.githubAuth.authenticate();
+                
+                // Refresh the UI to show the authenticated state
+                this.$nextTick(() => {
+                    // Force Alpine to re-evaluate computed properties
+                    this.$nextTick();
+                });
                 
                 // After successful authentication, add GitHub user to database
                 const githubUser = this.githubUser;
@@ -145,6 +151,8 @@ document.addEventListener('alpine:init', () => {
                     await this.ensureGitHubUserInDatabase(githubUser);
                     await this.loadDataFromGitHub();
                 }
+                
+                console.log('✅ Authentication and setup complete');
             } catch (error) {
                 console.error('❌ Authentication failed:', error);
                 alert('GitHub authentication failed: ' + error.message);
@@ -183,20 +191,26 @@ document.addEventListener('alpine:init', () => {
         },
 
         logoutFromGitHub() {
-            window.githubDB.logout();
+            window.githubAuth.logout();
+            
+            // Refresh the UI to show the logged out state
+            this.$nextTick(() => {
+                this.$nextTick();
+            });
+            
             console.log('👋 Logged out from GitHub');
         },
 
         get isAuthenticated() {
-            return window.githubDB ? window.githubDB.isAuthenticated() : false;
+            return window.githubAuth ? window.githubAuth.isAuthenticated() : false;
         },
 
         get githubUser() {
-            return window.githubDB ? window.githubDB.getAuthenticatedUser() : null;
+            return window.githubAuth ? window.githubAuth.getCurrentUser() : null;
         },
 
         get canWrite() {
-            return window.githubDB ? window.githubDB.canWrite() : false;
+            return this.isAuthenticated && window.githubDB ? window.githubDB.canWrite() : false;
         },
 
         showAuthPrompt() {

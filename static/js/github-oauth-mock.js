@@ -19,6 +19,8 @@ class MockGitHubOAuth {
 
     // Simulate OAuth authentication
     async authenticate() {
+        console.log('🎭 Starting mock GitHub authentication...');
+        
         // Create a mock GitHub user for demo purposes
         const mockUser = {
             id: 12345,
@@ -36,12 +38,10 @@ class MockGitHubOAuth {
         localStorage.setItem(this.tokenKey, this.token);
         localStorage.setItem(this.userKey, JSON.stringify(mockUser));
         
-        console.log('✅ Mock GitHub authentication successful');
+        console.log('✅ Mock GitHub authentication successful', mockUser);
         
-        // Trigger a page refresh to update UI
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
+        // Just return success, don't reload the page
+        return true;
     }
 
     isAuthenticated() {
@@ -59,10 +59,8 @@ class MockGitHubOAuth {
         localStorage.removeItem(this.userKey);
         console.log('👋 Mock GitHub logout successful');
         
-        // Trigger a page refresh to update UI
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
+        // Just return success, don't reload the page
+        return true;
     }
 
     // Mock authenticated requests - just pass through to regular fetch

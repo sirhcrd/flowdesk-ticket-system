@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en" x-data="app" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowDesk - Modern Ticket System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- SortableJS for drag & drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="./static/css/styles.css">
+    
+    <!-- Heroicons for beautiful icons -->
+    <script src="https://unpkg.com/heroicons@2.0.18/24/outline/index.js" type="module"></script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    
+    <!-- Navigation -->
+    <nav class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-sm">FD</span>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">FlowDesk</h1>
+                </div>
+                
+                <!-- Navigation items -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <button @click="currentView = 'dashboard'" 
+                            :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
+                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        Dashboard
+                    </button>
+                    <button @click="currentView = 'tickets'" 
+                            :class="currentView === 'tickets' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
+                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        Tickets
+                    </button>
+                    <button @click="currentView = 'kanban'" 
+                            :class="currentView === 'kanban' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
+                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        Kanban
+                    </button>
+                    
+                    <!-- Export Dropdown -->
+                    <div class="relative" x-data="{ exportOpen: false }">
+                        <button @click="exportOpen = !exportOpen" 
+                                class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                            Export
+                        </button>
+                        <div x-show="exportOpen" @click.away="exportOpen = false"
+                             class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <div class="py-1">
+                                <button @click="exportToCSV(); exportOpen = false" 
+                                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    📄 Export to CSV
+                                </button>
+                                <button @click="exportToJSON(); exportOpen = false"
+                                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    📋 Export to JSON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Management & Controls -->
+                <div class="flex items-center space-x-4">
+                    <!-- Current User Display -->
+                    <div class="flex items-center space-x-3">
+                        <!-- User Info -->
+                        <div x-show="currentUser" class="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md">
+                            <!-- User Avatar -->
+                            <div x-show="currentUser && !currentUser.github_avatar_url" 
+                                 class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                 :style="`background-color: ${currentUser?.avatar_color || '#3B82F6'}`"
+                                 x-text="currentUser?.name?.substring(0, 2).toUpperCase()">
+                            </div>
+                            <img x-show="currentUser?.github_avatar_url" 
+                                 :src="currentUser?.github_avatar_url" 
+                                 :alt="currentUser?.name"
+                                 class="w-6 h-6 rounded-full">
+                            
+                            <!-- User Name -->
+                            <span class="text-sm font-medium text-gray-900 dark:text-white" x-text="currentUser?.name || 'No User Selected'"></span>
+                            
+                            <!-- GitHub Badge -->
+                            <div x-show="currentUser?.github_login" class="flex items-center">
+                                <svg class="w-3 h-3 text-gray-600 dark:text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Add User Button (only show if authenticated and can write) -->
+                        <button x-show="canWrite" @click="showAddUser = true" 
+                                class="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                title="Add team member">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Theme toggle -->
+                    <button @click="toggleTheme()" 
+                            class="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                        <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                        <svg x-show="darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- GitHub Authentication & Status -->
+                    <div class="flex items-center space-x-4">
+                        <!-- Authentication Status -->
+                        <div x-show="!isAuthenticated" class="flex items-center space-x-2">
+                            <button @click="loginWithGitHub()" 
+                                    class="px-3 py-1 bg-gray-900 hover:bg-gray-800 text-white text-sm rounded-md transition-colors flex items-center space-x-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>Sign in with GitHub</span>
+                            </button>
+                        </div>
+
+                        <div x-show="isAuthenticated" class="flex items-center space-x-2">
+                            <!-- Authenticated User Info -->
+                            <div class="flex items-center space-x-2 px-3 py-1 bg-green-50 dark:bg-green-900 rounded-md">
+                                <img :src="githubUser?.avatar_url" :alt="githubUser?.name" 
+                                     class="w-6 h-6 rounded-full" x-show="githubUser?.avatar_url">
+                                <span class="text-green-800 dark:text-green-200 text-sm font-medium" x-text="githubUser?.login || 'GitHub User'"></span>
+                                <span class="text-green-600 dark:text-green-400 text-xs">✓ Connected</span>
+                            </div>
+
+                            <!-- Logout Button -->
+                            <button @click="logoutFromGitHub()" 
+                                    class="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                    title="Logout from GitHub">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Sync Button -->
+                        <button @click="syncData()" :disabled="loading" 
+                                class="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50 transition-colors"
+                                title="Sync with GitHub">
+                            <svg class="w-5 h-5" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Status Indicator -->
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                            <span x-show="loading" class="text-blue-600 dark:text-blue-400">🔄 Syncing...</span>
+                            <span x-show="!loading && dbReady && isAuthenticated" class="text-green-600 dark:text-green-400">� Full Access</span>
+                            <span x-show="!loading && dbReady && !isAuthenticated" class="text-orange-600 dark:text-orange-400">� View Only</span>
+                            <span x-show="!loading && !dbReady" class="text-red-600 dark:text-red-400">❌ Offline</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Dashboard View -->
+            <div x-show="currentView === 'dashboard'">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-2">Welcome back! Here's what's happening with your tickets.</p>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tickets</p>
+                                <p class="text-3xl font-bold text-gray-900 dark:text-white" x-text="stats.total || 0"></p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Open</p>
+                                <p class="text-3xl font-bold text-orange-600 dark:text-orange-400" x-text="stats.open || 0"></p>
+                            </div>
+                            <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
+                                <p class="text-3xl font-bold text-blue-600 dark:text-blue-400" x-text="stats.in_progress || 0"></p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Resolved</p>
+                                <p class="text-3xl font-bold text-green-600 dark:text-green-400" x-text="stats.resolved || 0"></p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                                <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Tickets -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Recent Tickets</h3>
+                    </div>
+                    <div class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <template x-for="ticket in recentTickets" :key="ticket.id">
+                            <div class="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" @click="viewTicket(ticket)">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <h4 class="text-sm font-medium text-gray-900 dark:text-white" x-text="ticket.title"></h4>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" x-text="`#${ticket.id} • Created by ${ticket.creator}`"></p>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <span :class="getStatusColor(ticket.status)" 
+                                              class="px-2 py-1 text-xs font-medium rounded-full" 
+                                              x-text="ticket.status.replace('_', ' ').toUpperCase()"></span>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(ticket.created_at)"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tickets View -->
+            <div x-show="currentView === 'tickets'">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">All Tickets</h1>
+                        <p class="text-gray-600 dark:text-gray-400 mt-2">Manage and track all tickets</p>
+                    </div>
+                    <button @click="showCreateTicket = true" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        Create Ticket
+                    </button>
+                </div>
+                
+                <!-- Tickets Table -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Ticket</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Priority</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Assignee</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                <template x-for="ticket in tickets" :key="ticket.id">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td class="px-6 py-4">
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="ticket.title"></div>
+                                                <div class="text-sm text-gray-500 dark:text-gray-400" x-text="`#${ticket.id} • ${ticket.description.substring(0, 50)}...`"></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <select x-model="ticket.status" @change="updateTicketStatus(ticket.id, $event.target.value)" 
+                                                    :class="getStatusColor(ticket.status)"
+                                                    class="text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-blue-500">
+                                                <option value="open">Open</option>
+                                                <option value="in_progress">In Progress</option>
+                                                <option value="resolved">Resolved</option>
+                                                <option value="closed">Closed</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span :class="getPriorityColor(ticket.priority)" 
+                                                  class="px-2 py-1 text-xs font-medium rounded-full" 
+                                                  x-text="ticket.priority.toUpperCase()"></span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white" x-text="ticket.assignee"></td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(ticket.created_at)"></td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex space-x-2">
+                                                <button @click="viewTicket(ticket)" 
+                                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium hover:underline">
+                                                    View
+                                                </button>
+                                                <button @click="deleteTicket(ticket.id)" 
+                                                        class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium hover:underline">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        
+                        <!-- Empty state -->
+                        <div x-show="tickets.length === 0" class="text-center py-12">
+                            <div class="text-gray-500 dark:text-gray-400">
+                                <p class="text-lg font-medium">No tickets yet</p>
+                                <p class="mt-2">Create your first ticket to get started!</p>
+                                <button @click="showCreateTicket = true" 
+                                        class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                    Create Ticket
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban View -->
+            <div x-show="currentView === 'kanban'">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Kanban Board</h1>
+                        <p class="text-gray-600 dark:text-gray-400 mt-2">Drag and drop tickets between columns</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button @click="showColumnManager = true" 
+                                class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            ⚙️ Manage Columns
+                        </button>
+                        <button @click="showCreateTicket = true" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            ➕ Create Ticket
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Kanban Board -->
+                <div class="flex space-x-6 overflow-x-auto pb-6">
+                    <template x-for="column in kanbanColumns" :key="column.id">
+                        <div class="flex-shrink-0 w-80">
+                            <!-- Column Header -->
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 mb-4 border-l-4" 
+                                 :style="`border-color: ${column.color}`">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-4 h-4 rounded-full" :style="`background-color: ${column.color}`"></div>
+                                        <h3 class="font-semibold text-gray-900 dark:text-white" x-text="column.name"></h3>
+                                        <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm px-2 py-1 rounded-full"
+                                              x-text="getColumnTicketCount(column.id)"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tickets Container -->
+                            <div class="space-y-3 min-h-[200px] p-2 bg-gray-50 dark:bg-gray-900 rounded-lg"
+                                 :data-column-id="column.id"
+                                 x-data="{}" 
+                                 x-init="initSortable($el, column.id)">
+                                
+                                <template x-for="ticket in getColumnTickets(column.id)" :key="ticket.id">
+                                    <div :data-ticket-id="ticket.id" 
+                                         class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 cursor-move hover:shadow-md transition-shadow">
+                                        
+                                        <!-- Ticket Header -->
+                                        <div class="flex items-start justify-between mb-2">
+                                            <h4 class="font-medium text-gray-900 dark:text-white text-sm leading-tight" 
+                                                x-text="ticket.title"></h4>
+                                            <span :class="getPriorityColor(ticket.priority)" 
+                                                  class="px-2 py-1 text-xs font-medium rounded-full ml-2 flex-shrink-0">
+                                                <span x-text="ticket.priority?.charAt(0).toUpperCase()"></span>
+                                            </span>
+                                        </div>
+
+                                        <!-- Ticket Meta -->
+                                        <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                            <span x-text="`#${ticket.id}`"></span>
+                                            <div class="flex items-center space-x-2">
+                                                <!-- Assignee Avatar -->
+                                                <div x-show="ticket.assignee_name" 
+                                                     class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
+                                                     :title="ticket.assignee_name"
+                                                     x-text="ticket.assignee_name?.substring(0, 2).toUpperCase()">
+                                                </div>
+                                                <!-- Due Date (if we add it later) -->
+                                            </div>
+                                        </div>
+
+                                        <!-- Tags -->
+                                        <div x-show="ticket.tags" class="flex flex-wrap gap-1 mt-2">
+                                            <template x-for="tag in (ticket.tags ? ticket.tags.split(',') : [])" :key="tag">
+                                                <span class="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">
+                                                    <span x-text="tag.trim()"></span>
+                                                </span>
+                                            </template>
+                                        </div>
+
+                                        <!-- Quick Actions -->
+                                        <div class="flex justify-end mt-3">
+                                            <button @click="viewTicket(ticket)" 
+                                                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs">
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Empty State -->
+                                <div x-show="getColumnTickets(column.id).length === 0" 
+                                     class="text-center py-8 text-gray-400 dark:text-gray-600">
+                                    <div class="text-2xl mb-2">📝</div>
+                                    <p class="text-sm">Drop tickets here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Add Column Button -->
+                    <div class="flex-shrink-0 w-80">
+                        <button @click="showAddColumn = true" 
+                                class="w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-600 transition-colors">
+                            <div class="text-center">
+                                <div class="text-2xl mb-2">➕</div>
+                                <p class="text-sm font-medium">Add Column</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+    </main>
+
+    <!-- Ticket Detail Modal -->
+    <div x-show="showTicketDetail" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto" @click.away="showTicketDetail = false">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex-1 mr-4">
+                        <!-- Editable Title -->
+                        <div x-show="!editingTitle" class="flex items-center space-x-2">
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="selectedTicket?.title"></h3>
+                            <button @click="editingTitle = true; editTitle = selectedTicket?.title" 
+                                    class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div x-show="editingTitle" class="flex items-center space-x-2">
+                            <input type="text" x-model="editTitle" 
+                                   class="text-2xl font-bold bg-transparent border-b-2 border-blue-500 focus:outline-none focus:border-blue-600 text-gray-900 dark:text-white flex-1"
+                                   @keyup.enter="saveTitle()" @keyup.escape="editingTitle = false">
+                            <button @click="saveTitle()" class="text-green-600 hover:text-green-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </button>
+                            <button @click="editingTitle = false" class="text-red-600 hover:text-red-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-400 mt-1" x-text="`Ticket #${selectedTicket?.id}`"></p>
+                    </div>
+                    <button @click="showTicketDetail = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Main Content -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Description -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+                                <button x-show="!editingDescription" @click="editingDescription = true; editDescription = selectedTicket?.description" 
+                                        class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div x-show="!editingDescription" class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 min-h-[120px]">
+                                <p class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap" x-text="selectedTicket?.description"></p>
+                            </div>
+                            <div x-show="editingDescription" class="space-y-3">
+                                <textarea x-model="editDescription" rows="6"
+                                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"></textarea>
+                                <div class="flex space-x-2">
+                                    <button @click="saveDescription()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm">
+                                        Save
+                                    </button>
+                                    <button @click="editingDescription = false" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tags -->
+                        <div x-show="selectedTicket?.tags && selectedTicket.tags.length > 0">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tags</label>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="tag in selectedTicket?.tags" :key="tag">
+                                    <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm rounded-full" x-text="tag"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sidebar -->
+                    <div class="space-y-6">
+                        <!-- Status -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                            <select x-model="selectedTicket.status" @change="updateTicketStatus(selectedTicket.id, $event.target.value)" 
+                                    :class="getStatusColor(selectedTicket?.status)"
+                                    class="w-full text-sm font-medium px-3 py-2 rounded-md border-0 focus:ring-2 focus:ring-blue-500">
+                                <option value="open">Open</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Priority -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                            <select x-model="selectedTicket.priority" @change="updateTicketPriority(selectedTicket.id, $event.target.value)" 
+                                    :class="getPriorityColor(selectedTicket?.priority)"
+                                    class="w-full text-sm font-medium px-3 py-2 rounded-md border-0 focus:ring-2 focus:ring-blue-500">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Assignee -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Assignee</label>
+                                <button x-show="!editingAssignee" @click="editingAssignee = true; editAssignee = selectedTicket?.assignee || ''" 
+                                        class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div x-show="!editingAssignee" class="bg-gray-50 dark:bg-gray-700 rounded-md p-3">
+                                <p class="text-gray-900 dark:text-gray-100 font-medium" x-text="selectedTicket?.assignee || 'Unassigned'"></p>
+                            </div>
+                            <div x-show="editingAssignee" class="space-y-3">
+                                <input type="text" x-model="editAssignee" placeholder="Enter assignee name"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                       @keyup.enter="saveAssignee()" @keyup.escape="editingAssignee = false">
+                                <div class="flex space-x-2">
+                                    <button @click="saveAssignee()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm">
+                                        Save
+                                    </button>
+                                    <button @click="editingAssignee = false" class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Creator -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Created by</label>
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-3">
+                                <p class="text-gray-900 dark:text-gray-100 font-medium" x-text="selectedTicket?.creator"></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Dates -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Timeline</label>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Created:</span>
+                                    <span class="text-gray-900 dark:text-gray-100" x-text="formatDate(selectedTicket?.created_at)"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Updated:</span>
+                                    <span class="text-gray-900 dark:text-gray-100" x-text="formatDate(selectedTicket?.updated_at)"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Activity Log -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Activity Log</label>
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 max-h-60 overflow-y-auto">
+                                <template x-for="(activity, index) in (selectedTicket?.activities || []).slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))" :key="activity.id">
+                                    <div class="flex items-start space-x-3 py-2 border-b border-gray-200 dark:border-gray-600 last:border-0">
+                                        <div :class="index === 0 ? 'w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0' : 'w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0'"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center space-x-2">
+                                                <p class="text-sm text-gray-900 dark:text-gray-100" x-text="activity.description"></p>
+                                                <span x-show="index === 0" class="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 rounded-full">Latest</span>
+                                            </div>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="formatDate(activity.timestamp)"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <div x-show="!selectedTicket?.activities || selectedTicket.activities.length === 0" 
+                                     class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                    No activity recorded yet
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div class="flex flex-col space-y-2">
+                                <button @click="saveTicket()" 
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                    💾 Save All Changes
+                                </button>
+                                <button @click="showTicketDetail = false" 
+                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                    Close
+                                </button>
+                                <button @click="deleteTicket(selectedTicket.id); showTicketDetail = false" 
+                                        class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                                    Delete Ticket
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Column Modal -->
+    <div x-show="showAddColumn" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" @click.away="showAddColumn = false">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New Column</h3>
+                    <button @click="showAddColumn = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="addColumn()">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Column Name *</label>
+                        <input type="text" x-model="newColumn.name" required
+                               placeholder="e.g. In Review, Testing, Done"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Column Color</label>
+                        <div class="flex space-x-2">
+                            <template x-for="color in columnColors" :key="color">
+                                <button type="button" 
+                                        @click="newColumn.color = color"
+                                        :class="newColumn.color === color ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-300' : ''"
+                                        class="w-8 h-8 rounded-full transition-all"
+                                        :style="`background-color: ${color}`">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" @click="showAddColumn = false"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                            Add Column
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Column Manager Modal -->
+    <div x-show="showColumnManager" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl" @click.away="showColumnManager = false">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Manage Kanban Columns</h3>
+                    <button @click="showColumnManager = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="space-y-3 mb-6">
+                    <template x-for="(column, index) in kanbanColumns" :key="column.id">
+                        <div class="flex items-center space-x-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="w-4 h-4 rounded-full flex-shrink-0" :style="`background-color: ${column.color}`"></div>
+                            <div class="flex-1">
+                                <input type="text" :value="column.name" 
+                                       @change="updateColumnName(column.id, $event.target.value)"
+                                       class="w-full bg-transparent border-none focus:ring-2 focus:ring-blue-500 rounded text-gray-900 dark:text-white">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button @click="moveColumnUp(index)" :disabled="index === 0"
+                                        class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                    </svg>
+                                </button>
+                                <button @click="moveColumnDown(index)" :disabled="index === kanbanColumns.length - 1"
+                                        class="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <button @click="deleteColumn(column.id)" 
+                                        class="p-1 text-red-400 hover:text-red-600">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                
+                <div class="flex justify-between">
+                    <button @click="showAddColumn = true; showColumnManager = false" 
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors">
+                        ➕ Add Column
+                    </button>
+                    <button @click="showColumnManager = false"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div x-show="showAddUser" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" @click.away="showAddUser = false">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New User</h3>
+                    <button @click="showAddUser = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="addNewUser()">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name *</label>
+                        <input type="text" x-model="newUser.name" required
+                               placeholder="e.g. John Smith"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email (Optional)</label>
+                        <input type="email" x-model="newUser.email"
+                               placeholder="john@example.com"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Avatar Color</label>
+                        <div class="flex space-x-2">
+                            <template x-for="color in avatarColors" :key="color">
+                                <button type="button" 
+                                        @click="newUser.avatar_color = color"
+                                        :class="newUser.avatar_color === color ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-300' : ''"
+                                        class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium transition-all"
+                                        :style="`background-color: ${color}`"
+                                        x-text="newUser.name ? newUser.name.substring(0, 2).toUpperCase() : 'U'">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" @click="showAddUser = false"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                            Add User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Ticket Modal -->
+    <div x-show="showCreateTicket" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl" @click.away="showCreateTicket = false">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Create New Ticket</h3>
+                
+                <form @submit.prevent="createTicket()">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
+                        <input type="text" x-model="newTicket.title" required
+                               placeholder="Brief description of the issue"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                        <textarea x-model="newTicket.description" rows="4"
+                                  placeholder="Detailed description of the issue or request"
+                                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"></textarea>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
+                            <select x-model="newTicket.priority"
+                                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="urgent">Urgent</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assignee</label>
+                            <input type="text" x-model="newTicket.assignee"
+                                   placeholder="Person responsible"
+                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tags (comma separated)</label>
+                        <input type="text" x-model="newTicket.tags"
+                               placeholder="bug, frontend, urgent"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" @click="showCreateTicket = false"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                            Create Ticket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="./static/js/github-oauth-mock.js"></script>
+    <!-- For real GitHub OAuth, replace above with: <script src="./static/js/github-oauth.js"></script> -->
+    <script src="./static/js/github-database.js"></script>
+    <script src="./static/js/app-clean.js"></script>
+</body>
+</html>
