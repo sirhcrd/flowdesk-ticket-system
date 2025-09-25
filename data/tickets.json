@@ -52,10 +52,26 @@
       "created_at": "2025-09-25T17:16:38.110Z",
       "updated_at": "2025-09-25T17:17:06.485Z",
       "updated_by": 1
+    },
+    {
+      "id": 4,
+      "title": "BUG: Sign in button doesn't change again",
+      "description": "Sign in button doesn't change again",
+      "status": "open",
+      "priority": "medium",
+      "assignee_id": 1,
+      "creator_id": 1,
+      "kanban_column_id": 1,
+      "kanban_position": 0,
+      "tags": [
+        "bug"
+      ],
+      "created_at": "2025-09-25T17:39:44.042Z",
+      "updated_at": "2025-09-25T17:39:44.042Z"
     }
   ],
-  "nextId": 4,
-  "lastUpdated": "2025-09-25T17:38:50.227Z",
+  "nextId": 5,
+  "lastUpdated": "2025-09-25T17:39:44.042Z",
   "version": "3.0",
   "updatedBy": "sirhcrd"
 }
