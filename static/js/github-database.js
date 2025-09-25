@@ -116,6 +116,22 @@ class GitHubDatabase {
         // Include SHA if file exists (for updates)
         if (this.fileSHAs[filename]) {
             body.sha = this.fileSHAs[filename];
+        } else {
+            // Try to fetch current SHA if we don't have it
+            try {
+                console.log(`🔍 Fetching current SHA for ${filename}...`);
+                const currentResponse = await this.auth.makeAuthenticatedRequest(url);
+                if (currentResponse.ok) {
+                    const currentData = await currentResponse.json();
+                    this.fileSHAs[filename] = currentData.sha;
+                    body.sha = currentData.sha;
+                    console.log(`✅ Found existing SHA for ${filename}`);
+                } else {
+                    console.log(`📝 File ${filename} doesn't exist yet, creating new file`);
+                }
+            } catch (shaError) {
+                console.log(`📝 Unable to fetch SHA for ${filename}, assuming new file`);
+            }
         }
         
         try {
@@ -125,8 +141,14 @@ class GitHubDatabase {
             });
             
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`GitHub API Error: ${errorData.message}`);
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { message: errorText };
+                }
+                throw new Error(`GitHub API Error (${response.status}): ${errorData.message || 'Unknown error'}`);
             }
             
             const result = await response.json();
@@ -239,8 +261,30 @@ class GitHubDatabase {
         
         await this.saveFile('tickets.json', tickets);
         
-        // Add creation activity
-        await this.addActivity(newTicket.id, ticketData.creator_id, 'created', `Ticket created`);
+        // Add creation activity (but don't save immediately to reduce API calls)
+        if (!this.cache.activities) {
+            this.cache.activities = this.getEmptyStructure('activities.json');
+        }
+        
+        const activities = this.cache.activities;
+        if (typeof activities.nextId !== 'number') {
+            activities.nextId = Math.max(...(activities.activities || []).map(a => a.id || 0), 0) + 1;
+        }
+        
+        const newActivity = {
+            id: activities.nextId++,
+            ticket_id: newTicket.id,
+            user_id: ticketData.creator_id,
+            action_type: 'created',
+            description: `Ticket created`,
+            timestamp: new Date().toISOString()
+        };
+        
+        activities.activities.push(newActivity);
+        activities.lastUpdated = new Date().toISOString();
+        
+        // Save activities immediately after ticket creation
+        await this.saveFile('activities.json', activities);
         
         return newTicket;
     }
