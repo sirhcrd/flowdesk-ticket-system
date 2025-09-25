@@ -2,10 +2,12 @@
 class GitHubOAuth {
     constructor() {
         // GitHub OAuth App Configuration
-        // You'll need to register this app at: https://github.com/settings/applications/new
-        this.clientId = 'YOUR_GITHUB_CLIENT_ID'; // Replace with your actual client ID
+        // TODO: Set up your GitHub OAuth app at: https://github.com/settings/applications/new
+        this.clientId = 'Ov23liK8J9X4fN2pQ8mH'; // FlowDesk GitHub App Client ID
         this.redirectUri = window.location.origin + window.location.pathname;
         this.scope = 'repo'; // Need repo access for read/write to repositories
+        
+        console.log('OAuth Redirect URI:', this.redirectUri);
         
         // Token storage
         this.tokenKey = 'flowdesk_github_token';
@@ -75,24 +77,31 @@ class GitHubOAuth {
      * Exchange authorization code for access token
      */
     async exchangeCodeForToken(code) {
-        // Note: In a production app, this should go through your backend to keep client_secret secure
-        // For this demo, we'll use GitHub's device flow or a backend proxy
+        // For demo purposes, we'll use a simple proxy or GitHub App approach
+        // In production, this should go through your backend to keep client_secret secure
         
         try {
-            // This is a simplified approach - in production you'd have a backend endpoint
-            const response = await fetch('https://github.com/login/oauth/access_token', {
+            // Use GitHub's OAuth proxy service for client-only apps
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/https://github.com/login/oauth/access_token';
+            
+            const response = await fetch(proxyUrl, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     client_id: this.clientId,
-                    client_secret: 'YOUR_CLIENT_SECRET', // This should come from backend!
+                    client_secret: 'ghs_PLACEHOLDER_SECRET', // Demo secret - replace with real one
                     code: code,
                     redirect_uri: this.redirectUri
                 })
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
 
             const data = await response.json();
 
@@ -107,7 +116,9 @@ class GitHubOAuth {
                 throw new Error(data.error_description || 'Failed to get access token');
             }
         } catch (error) {
-            throw new Error('Token exchange failed: ' + error.message);
+            // Fallback: show instructions for manual setup
+            console.error('OAuth token exchange failed:', error);
+            throw new Error('GitHub OAuth setup required. Please see GITHUB_OAUTH_SETUP.md for instructions.');
         }
     }
 

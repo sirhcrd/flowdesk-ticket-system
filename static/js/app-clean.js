@@ -138,9 +138,47 @@ document.addEventListener('alpine:init', () => {
         async loginWithGitHub() {
             try {
                 await window.githubDB.authenticate();
+                
+                // After successful authentication, add GitHub user to database
+                const githubUser = this.githubUser;
+                if (githubUser) {
+                    await this.ensureGitHubUserInDatabase(githubUser);
+                    await this.loadDataFromGitHub();
+                }
             } catch (error) {
                 console.error('❌ Authentication failed:', error);
                 alert('GitHub authentication failed: ' + error.message);
+            }
+        },
+
+        async ensureGitHubUserInDatabase(githubUser) {
+            // Check if GitHub user already exists in our database
+            const existingUser = this.users.find(u => 
+                u.github_login === githubUser.login || 
+                u.email === githubUser.email
+            );
+            
+            if (!existingUser) {
+                try {
+                    const newUser = await window.githubDB.createUser({
+                        name: githubUser.name || githubUser.login,
+                        email: githubUser.email || '',
+                        avatar_color: '#3B82F6', // Default color
+                        github_login: githubUser.login,
+                        github_avatar_url: githubUser.avatar_url,
+                        github_id: githubUser.id
+                    });
+                    
+                    // Auto-select the new user
+                    this.selectUser(newUser);
+                    console.log('✅ GitHub user added to database:', newUser.name);
+                } catch (error) {
+                    console.warn('Could not add GitHub user to database:', error);
+                }
+            } else {
+                // Select the existing user
+                this.selectUser(existingUser);
+                console.log('👤 Using existing user:', existingUser.name);
             }
         },
 
