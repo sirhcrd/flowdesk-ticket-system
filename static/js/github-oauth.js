@@ -2,12 +2,32 @@
 class GitHubOAuth {
     constructor() {
         // GitHub OAuth App Configuration
-        // TODO: Set up your GitHub OAuth app at: https://github.com/settings/applications/new
-        this.clientId = 'Ov23liK8J9X4fN2pQ8mH'; // FlowDesk GitHub App Client ID
-        this.redirectUri = window.location.origin + window.location.pathname;
-        this.scope = 'repo'; // Need repo access for read/write to repositories
+        // Replace with your actual GitHub OAuth app client ID
+        this.clientId = 'Ov23liK8J9X4fN2pQ8mH'; // Replace this with your real client ID
         
-        console.log('OAuth Redirect URI:', this.redirectUri);
+        // Determine redirect URI based on environment
+        const isGitHubPages = window.location.hostname.includes('github.io');
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (isGitHubPages) {
+            this.redirectUri = `${window.location.origin}${window.location.pathname}`;
+        } else if (isLocalhost) {
+            this.redirectUri = `${window.location.origin}/auth/callback`;
+        } else {
+            this.redirectUri = `${window.location.origin}${window.location.pathname}`;
+        }
+        
+        // Clean up redirect URI
+        if (this.redirectUri.endsWith('/')) {
+            this.redirectUri = this.redirectUri.slice(0, -1);
+        }
+        
+        this.scope = 'repo user:email'; // Need repo access and user email
+        
+        console.log('🔧 OAuth Configuration:');
+        console.log('Client ID:', this.clientId);
+        console.log('Redirect URI:', this.redirectUri);
+        console.log('Scope:', this.scope);
         
         // Token storage
         this.tokenKey = 'flowdesk_github_token';
@@ -15,6 +35,20 @@ class GitHubOAuth {
         
         this.token = localStorage.getItem(this.tokenKey);
         this.user = null;
+        
+        // Load stored user if token exists
+        if (this.token) {
+            const storedUser = localStorage.getItem(this.userKey);
+            if (storedUser) {
+                try {
+                    this.user = JSON.parse(storedUser);
+                    console.log('🔄 Restored user session:', this.user.login);
+                } catch (error) {
+                    console.warn('Failed to parse stored user, clearing:', error);
+                    this.logout();
+                }
+            }
+        }
         
         // Check if we're returning from OAuth callback
         this.handleOAuthCallback();
@@ -27,20 +61,46 @@ class GitHubOAuth {
     /**
      * Start the GitHub OAuth authentication flow
      */
-    async authenticate() {
-        // Generate a random state for security
-        const state = this.generateRandomString();
-        localStorage.setItem('oauth_state', state);
+     async authenticate() {
+        console.log('🚀 Starting GitHub OAuth authentication...');
+        
+        // Validate client ID
+        if (!this.clientId || this.clientId === 'YOUR_GITHUB_CLIENT_ID' || this.clientId === 'Ov23liK8J9X4fN2pQ8mH') {
+            const message = 'GitHub OAuth not properly configured. Please:\n\n' +
+                          '1. Go to https://github.com/settings/applications/new\n' +
+                          '2. Create a new OAuth App\n' +
+                          '3. Use the redirect URI: ' + this.redirectUri + '\n' +
+                          '4. Replace the clientId in github-oauth.js with your real Client ID\n\n' +
+                          'See GITHUB_OAUTH_REGISTRATION.md for detailed instructions.';
+            
+            alert(message);
+            
+            // Open registration page
+            window.open('https://github.com/settings/applications/new', '_blank');
+            return;
+        }
 
-        // Build the authorization URL
-        const authUrl = new URL('https://github.com/login/oauth/authorize');
-        authUrl.searchParams.set('client_id', this.clientId);
-        authUrl.searchParams.set('redirect_uri', this.redirectUri);
-        authUrl.searchParams.set('scope', this.scope);
-        authUrl.searchParams.set('state', state);
+        try {
+            // Generate a random state for security
+            const state = this.generateRandomString();
+            localStorage.setItem('oauth_state', state);
 
-        // Redirect to GitHub OAuth
-        window.location.href = authUrl.toString();
+            // Build the authorization URL
+            const authUrl = new URL('https://github.com/login/oauth/authorize');
+            authUrl.searchParams.set('client_id', this.clientId);
+            authUrl.searchParams.set('redirect_uri', this.redirectUri);
+            authUrl.searchParams.set('scope', this.scope);
+            authUrl.searchParams.set('state', state);
+            
+            console.log('🔗 Redirecting to GitHub:', authUrl.toString());
+
+            // Redirect to GitHub OAuth
+            window.location.href = authUrl.toString();
+            
+        } catch (error) {
+            console.error('❌ OAuth initiation failed:', error);
+            alert('Failed to start GitHub authentication: ' + error.message);
+        }
     }
 
     /**
@@ -75,51 +135,116 @@ class GitHubOAuth {
 
     /**
      * Exchange authorization code for access token
+     * Uses a serverless function to securely handle the client secret
      */
     async exchangeCodeForToken(code) {
-        // For demo purposes, we'll use a simple proxy or GitHub App approach
-        // In production, this should go through your backend to keep client_secret secure
+        console.log('🔄 Exchanging code for token...');
         
         try {
-            // Use GitHub's OAuth proxy service for client-only apps
-            const proxyUrl = 'https://cors-anywhere.herokuapp.com/https://github.com/login/oauth/access_token';
-            
-            const response = await fetch(proxyUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    client_id: this.clientId,
-                    client_secret: 'ghs_PLACEHOLDER_SECRET', // Demo secret - replace with real one
-                    code: code,
-                    redirect_uri: this.redirectUri
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-
-            if (data.access_token) {
-                this.token = data.access_token;
-                localStorage.setItem(this.tokenKey, this.token);
+            // Try multiple OAuth proxy services in order of preference
+            const baseUrl = window.location.origin;
+            const proxyServices = [
+                // Primary: Same-domain Netlify function (most secure)
+                `${baseUrl}/.netlify/functions/github-oauth`,
                 
-                // Get user info
-                await this.fetchUserInfo();
-                return true;
-            } else {
-                throw new Error(data.error_description || 'Failed to get access token');
+                // Fallback 1: Alternative endpoint  
+                `${baseUrl}/api/github-oauth`,
+                
+                // Fallback 2: External Netlify function (if deployed separately)
+                `https://flowdesk-oauth-proxy.netlify.app/.netlify/functions/github-oauth`,
+            ];
+
+            for (const proxyUrl of proxyServices) {
+                try {
+                    console.log(`🔗 Trying OAuth proxy: ${proxyUrl}`);
+                    
+                    const requestBody = {
+                        client_id: this.clientId,
+                        code: code,
+                        redirect_uri: this.redirectUri
+                    };
+
+                    // For the CORS proxy, we need a different format
+                    if (proxyUrl.includes('allorigins.win')) {
+                        const response = await fetch('https://github.com/login/oauth/access_token', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams({
+                                ...requestBody,
+                                client_secret: 'github_pat_11AAAA...' // This would need to be set
+                            }).toString()
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.access_token) {
+                            return await this.handleSuccessfulAuth(data.access_token);
+                        }
+                    } else {
+                        // Use serverless function
+                        const response = await fetch(proxyUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            if (data.access_token) {
+                                return await this.handleSuccessfulAuth(data.access_token);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`❌ Proxy ${proxyUrl} failed:`, error.message);
+                    continue; // Try next proxy
+                }
             }
+            
+            // If all proxies fail, show setup instructions
+            throw new Error('OAuth token exchange failed. GitHub OAuth app setup may be incomplete.');
+            
         } catch (error) {
-            // Fallback: show instructions for manual setup
-            console.error('OAuth token exchange failed:', error);
-            throw new Error('GitHub OAuth setup required. Please see GITHUB_OAUTH_SETUP.md for instructions.');
+            console.error('❌ Token exchange failed:', error);
+            
+            // Show helpful error message
+            const message = `GitHub OAuth token exchange failed.\n\n` +
+                          `This usually means:\n` +
+                          `1. The GitHub OAuth app needs to be set up\n` +
+                          `2. The client secret needs to be configured in a serverless function\n` +
+                          `3. The redirect URI doesn't match\n\n` +
+                          `Current redirect URI: ${this.redirectUri}\n\n` +
+                          `Please check GITHUB_OAUTH_REGISTRATION.md for setup instructions.`;
+            
+            alert(message);
+            throw error;
         }
+    }
+    
+    /**
+     * Handle successful authentication
+     */
+    async handleSuccessfulAuth(accessToken) {
+        console.log('✅ OAuth token received successfully');
+        
+        this.token = accessToken;
+        localStorage.setItem(this.tokenKey, this.token);
+        
+        // Get user info
+        await this.fetchUserInfo();
+        
+        console.log('👤 User authenticated:', this.user?.login);
+        return true;
     }
 
     /**
