@@ -108,62 +108,7 @@ document.addEventListener('alpine:init', () => {
             this.tickets = [];
         },
         
-        // Local Storage Management
-        saveToStorage() {
-            localStorage.setItem('flowdesk_tickets', JSON.stringify(this.tickets));
-            localStorage.setItem('flowdesk_users', JSON.stringify(this.users));
-            localStorage.setItem('flowdesk_next_id', this.nextId.toString());
-        },
-        
-        loadSampleData() {
-            this.tickets = [
-                {
-                    id: 1,
-                    title: 'Welcome to FlowDesk!',
-                    description: 'This is a sample ticket. You can create, edit, and manage tickets locally in your browser. All data is saved locally.',
-                    status: 'open',
-                    priority: 'medium',
-                    assignee: 'Admin',
-                    creator: 'System',
-                    created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-                    updated_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-                    tags: ['welcome', 'demo'],
-                    activities: [
-                        {
-                            id: 1,
-                            description: 'Ticket created by System',
-                            timestamp: new Date(Date.now() - 86400000).toISOString() // Yesterday
-                        }
-                    ]
-                },
-                {
-                    id: 2,
-                    title: 'Export Feature Available',
-                    description: 'You can export your tickets to Excel or CSV format using the export buttons in the toolbar.',
-                    status: 'resolved',
-                    priority: 'low',
-                    assignee: 'Admin',
-                    creator: 'System',
-                    created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-                    updated_at: new Date().toISOString(),
-                    tags: ['feature', 'export'],
-                    activities: [
-                        {
-                            id: 1,
-                            description: 'Ticket created by System',
-                            timestamp: new Date(Date.now() - 86400000).toISOString()
-                        },
-                        {
-                            id: 2,
-                            description: 'Status changed from open to resolved',
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
-                }
-            ];
-            this.nextId = 3;
-            this.saveToStorage();
-        },
+
         
         // Ticket Management
         async createTicket() {
@@ -228,29 +173,66 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        updateTicketStatus(ticketId, newStatus) {
+        async updateTicketStatus(ticketId, newStatus) {
             console.log('🔄 STATUS UPDATE CALLED - Ticket ID:', ticketId, 'New Status:', newStatus);
-            const ticket = this.tickets.find(t => t.id === ticketId);
-            console.log('🎫 Found ticket:', ticket);
-            if (ticket) {
-                console.log('📊 Current status:', ticket.status, 'vs New status:', newStatus);
-                if (ticket.status !== newStatus) {
-                    const oldStatus = ticket.status;
-                    ticket.status = newStatus;
-                    console.log('✅ Status changed from:', oldStatus, 'to:', newStatus);
-                    this.addActivity(ticketId, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+            
+            try {
+                // Get current ticket from database
+                const currentTicket = window.flowDeskDB.getTicketById(ticketId);
+                if (!currentTicket) {
+                    console.log('❌ Ticket not found for ID:', ticketId);
+                    return;
+                }
+                
+                console.log('📊 Current status:', currentTicket.status, 'vs New status:', newStatus);
+                
+                if (currentTicket.status !== newStatus) {
+                    const oldStatus = currentTicket.status;
+                    
+                    // Update in database
+                    const success = window.flowDeskDB.exec(
+                        'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [newStatus, ticketId]
+                    );
+                    
+                    if (success) {
+                        // Add activity log
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'status_changed', ?)
+                        `, [ticketId, this.currentUser?.id, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`]);
+                        
+                        // Reload tickets to reflect changes
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        
+                        // Update selectedTicket if it's the same ticket
+                        if (this.selectedTicket && this.selectedTicket.id === ticketId) {
+                            this.selectedTicket = window.flowDeskDB.getTicketById(ticketId);
+                        }
+                        
+                        console.log('✅ Status updated successfully!');
+                    } else {
+                        console.log('❌ Failed to update status in database');
+                    }
                 } else {
                     console.log('⚠️ No change needed - same status');
                 }
-            } else {
-                console.log('❌ Ticket not found for ID:', ticketId);
+            } catch (error) {
+                console.error('❌ Error updating status:', error);
             }
         },
         
-        deleteTicket(ticketId) {
+        async deleteTicket(ticketId) {
             if (confirm('Are you sure you want to delete this ticket?')) {
-                this.tickets = this.tickets.filter(t => t.id !== ticketId);
-                this.saveToStorage();
+                try {
+                    const success = window.flowDeskDB.exec('DELETE FROM tickets WHERE id = ?', [ticketId]);
+                    if (success) {
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        console.log('✅ Ticket deleted successfully!');
+                    }
+                } catch (error) {
+                    console.error('❌ Error deleting ticket:', error);
+                }
             }
         },
         
@@ -327,57 +309,44 @@ document.addEventListener('alpine:init', () => {
             }
         },
         
-        // Activity logging
-        addActivity(ticketId, description) {
-            console.log('Adding activity:', description, 'to ticket:', ticketId);
-            const ticket = this.tickets.find(t => t.id === ticketId);
-            if (ticket) {
-                if (!ticket.activities) {
-                    ticket.activities = [];
-                }
-                
-                const activityId = (ticket.activities.length > 0) 
-                    ? Math.max(...ticket.activities.map(a => a.id)) + 1 
-                    : 1;
-                
-                const newActivity = {
-                    id: activityId,
-                    description: description,
-                    timestamp: new Date().toISOString()
-                };
-                
-                ticket.activities.push(newActivity);
-                
-                // Sort activities by timestamp (newest first)
-                ticket.activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                ticket.updated_at = new Date().toISOString();
-                
-                // Update selectedTicket if it's the same ticket
-                if (this.selectedTicket && this.selectedTicket.id === ticketId) {
-                    this.selectedTicket = ticket; // Force reactivity update
-                }
-                
-                this.saveToStorage();
-                console.log('Activity added successfully. Latest activity:', newActivity);
-            } else {
-                console.error('Ticket not found for ID:', ticketId);
-            }
-        },
+
         
         // Title editing
-        saveTitle() {
+        async saveTitle() {
             if (this.editTitle && this.editTitle !== this.selectedTicket.title) {
                 const oldTitle = this.selectedTicket.title;
-                this.selectedTicket.title = this.editTitle;
-                this.addActivity(this.selectedTicket.id, `Title changed from "${oldTitle}" to "${this.editTitle}"`);
+                
+                try {
+                    // Update in database
+                    const success = window.flowDeskDB.exec(
+                        'UPDATE tickets SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [this.editTitle, this.selectedTicket.id]
+                    );
+                    
+                    if (success) {
+                        // Add activity log
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'title_changed', ?)
+                        `, [this.selectedTicket.id, this.currentUser?.id, `Title changed from "${oldTitle}" to "${this.editTitle}"`]);
+                        
+                        // Update local data
+                        this.selectedTicket.title = this.editTitle;
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        
+                        console.log('✅ Title updated successfully!');
+                    }
+                } catch (error) {
+                    console.error('❌ Error updating title:', error);
+                }
             }
             this.editingTitle = false;
         },
         
         // Description editing
-        saveDescription() {
+        async saveDescription() {
             console.log('Saving description. Old:', this.selectedTicket.description, 'New:', this.editDescription);
+            
             if (this.editDescription !== this.selectedTicket.description) {
                 const hasOldDescription = this.selectedTicket.description && this.selectedTicket.description.trim();
                 const hasNewDescription = this.editDescription && this.editDescription.trim();
@@ -391,10 +360,28 @@ document.addEventListener('alpine:init', () => {
                     activityDesc = 'Description updated';
                 }
                 
-                this.selectedTicket.description = this.editDescription;
-                if (activityDesc) {
-                    console.log('Adding activity:', activityDesc);
-                    this.addActivity(this.selectedTicket.id, activityDesc);
+                try {
+                    // Update in database
+                    const success = window.flowDeskDB.exec(
+                        'UPDATE tickets SET description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [this.editDescription, this.selectedTicket.id]
+                    );
+                    
+                    if (success && activityDesc) {
+                        // Add activity log
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'description_changed', ?)
+                        `, [this.selectedTicket.id, this.currentUser?.id, activityDesc]);
+                        
+                        // Update local data
+                        this.selectedTicket.description = this.editDescription;
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        
+                        console.log('✅ Description updated successfully!');
+                    }
+                } catch (error) {
+                    console.error('❌ Error updating description:', error);
                 }
             } else {
                 console.log('No description change detected');
@@ -403,38 +390,137 @@ document.addEventListener('alpine:init', () => {
         },
         
         // Priority editing
-        updateTicketPriority(ticketId, newPriority) {
+        async updateTicketPriority(ticketId, newPriority) {
             console.log('🔄 PRIORITY UPDATE CALLED - Ticket ID:', ticketId, 'New Priority:', newPriority);
-            const ticket = this.tickets.find(t => t.id === ticketId);
-            console.log('🎫 Found ticket:', ticket);
-            if (ticket) {
-                console.log('📊 Current priority:', ticket.priority, 'vs New priority:', newPriority);
-                if (ticket.priority !== newPriority) {
-                    const oldPriority = ticket.priority;
-                    ticket.priority = newPriority;
-                    console.log('✅ Priority changed from:', oldPriority, 'to:', newPriority);
-                    this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
+            
+            try {
+                // Get current ticket from database
+                const currentTicket = window.flowDeskDB.getTicketById(ticketId);
+                if (!currentTicket) {
+                    console.log('❌ Ticket not found for ID:', ticketId);
+                    return;
+                }
+                
+                console.log('📊 Current priority:', currentTicket.priority, 'vs New priority:', newPriority);
+                
+                if (currentTicket.priority !== newPriority) {
+                    const oldPriority = currentTicket.priority;
+                    
+                    // Update in database
+                    const success = window.flowDeskDB.exec(
+                        'UPDATE tickets SET priority = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [newPriority, ticketId]
+                    );
+                    
+                    if (success) {
+                        // Add activity log
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'priority_changed', ?)
+                        `, [ticketId, this.currentUser?.id, `Priority changed from ${oldPriority} to ${newPriority}`]);
+                        
+                        // Reload tickets to reflect changes
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        
+                        // Update selectedTicket if it's the same ticket
+                        if (this.selectedTicket && this.selectedTicket.id === ticketId) {
+                            this.selectedTicket = window.flowDeskDB.getTicketById(ticketId);
+                        }
+                        
+                        console.log('✅ Priority updated successfully!');
+                    } else {
+                        console.log('❌ Failed to update priority in database');
+                    }
                 } else {
                     console.log('⚠️ No change needed - same priority');
                 }
-            } else {
-                console.log('❌ Ticket not found for ID:', ticketId);
+            } catch (error) {
+                console.error('❌ Error updating priority:', error);
             }
         },
         
         // Assignee editing
-        saveAssignee() {
-            const newAssignee = this.editAssignee.trim();
-            const currentAssignee = this.selectedTicket.assignee || '';
+        async saveAssignee() {
+            const newAssigneeName = this.editAssignee.trim();
+            const currentAssigneeName = this.selectedTicket.assignee_name || '';
             
-            if (newAssignee !== currentAssignee) {
-                const oldAssignee = currentAssignee || 'Unassigned';
-                const newAssigneeDisplay = newAssignee || 'Unassigned';
-                
-                this.selectedTicket.assignee = newAssignee;
-                this.addActivity(this.selectedTicket.id, `Assignee changed from ${oldAssignee} to ${newAssigneeDisplay}`);
+            if (newAssigneeName !== currentAssigneeName) {
+                try {
+                    // Find assignee user ID
+                    const assigneeUser = this.users.find(u => u.name === newAssigneeName);
+                    const assigneeId = assigneeUser ? assigneeUser.id : null;
+                    
+                    // Update in database
+                    const success = window.flowDeskDB.exec(
+                        'UPDATE tickets SET assignee_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                        [assigneeId, this.selectedTicket.id]
+                    );
+                    
+                    if (success) {
+                        const oldAssignee = currentAssigneeName || 'Unassigned';
+                        const newAssigneeDisplay = newAssigneeName || 'Unassigned';
+                        
+                        // Add activity log
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'assignee_changed', ?)
+                        `, [this.selectedTicket.id, this.currentUser?.id, `Assignee changed from ${oldAssignee} to ${newAssigneeDisplay}`]);
+                        
+                        // Reload ticket data
+                        this.selectedTicket = window.flowDeskDB.getTicketById(this.selectedTicket.id);
+                        this.tickets = window.flowDeskDB.getAllTickets();
+                        
+                        console.log('✅ Assignee updated successfully!');
+                    }
+                } catch (error) {
+                    console.error('❌ Error updating assignee:', error);
+                }
             }
             this.editingAssignee = false;
+        },
+        
+        // Save all changes to ticket
+        async saveTicket() {
+            if (!this.selectedTicket) return;
+            
+            console.log('💾 Saving all ticket changes...');
+            
+            try {
+                // Save any pending edits
+                if (this.editingTitle) {
+                    await this.saveTitle();
+                }
+                if (this.editingDescription) {
+                    await this.saveDescription();
+                }
+                if (this.editingAssignee) {
+                    await this.saveAssignee();
+                }
+                
+                // Reload the ticket to get fresh data including activities
+                this.selectedTicket = window.flowDeskDB.getTicketById(this.selectedTicket.id);
+                this.tickets = window.flowDeskDB.getAllTickets();
+                
+                // Visual feedback
+                const button = document.querySelector('.bg-green-600');
+                if (button) {
+                    const originalText = button.textContent;
+                    button.textContent = '✅ Saved!';
+                    button.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    button.classList.add('bg-green-500');
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('bg-green-500');
+                        button.classList.add('bg-green-600', 'hover:bg-green-700');
+                    }, 1500);
+                }
+                
+                console.log('✅ All changes saved successfully!');
+            } catch (error) {
+                console.error('❌ Error saving ticket:', error);
+                alert('Error saving changes: ' + error.message);
+            }
         },
         
         // Statistics
