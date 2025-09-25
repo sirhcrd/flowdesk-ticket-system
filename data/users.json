@@ -1,0 +1,20 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "System",
+      "email": "system@flowdesk.com",
+      "avatar_color": "#6B7280",
+      "created_at": "2025-09-25T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Current User",
+      "email": "user@flowdesk.com",
+      "avatar_color": "#3B82F6",
+      "created_at": "2025-09-25T10:00:00.000Z"
+    }
+  ],
+  "nextId": 3,
+  "lastUpdated": "2025-09-25T15:30:00.000Z"
+}

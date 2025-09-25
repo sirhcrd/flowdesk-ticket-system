@@ -1,0 +1,35 @@
+{
+  "tickets": [
+    {
+      "id": 1,
+      "title": "Welcome to FlowDesk Collaborative!",
+      "description": "This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!",
+      "status": "open",
+      "priority": "medium",
+      "assignee_id": 2,
+      "creator_id": 1,
+      "kanban_column_id": 1,
+      "kanban_position": 0,
+      "created_at": "2025-09-25T10:00:00.000Z",
+      "updated_at": "2025-09-25T15:30:00.000Z",
+      "tags": ["welcome", "collaboration", "github"]
+    },
+    {
+      "id": 2,
+      "title": "Test GitHub Integration",
+      "description": "Create a ticket to test that the GitHub API integration is working correctly for collaborative editing.",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee_id": 2,
+      "creator_id": 2,
+      "kanban_column_id": 2,
+      "kanban_position": 0,
+      "created_at": "2025-09-25T11:00:00.000Z",
+      "updated_at": "2025-09-25T15:30:00.000Z",
+      "tags": ["testing", "github-api"]
+    }
+  ],
+  "nextId": 3,
+  "lastUpdated": "2025-09-25T15:30:00.000Z",
+  "version": "3.0"
+}
