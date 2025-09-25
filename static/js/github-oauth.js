@@ -2,8 +2,8 @@
 class GitHubOAuth {
     constructor() {
         // GitHub OAuth App Configuration
-        // Replace with your actual GitHub OAuth app client ID
-        this.clientId = 'Ov23liK8J9X4fN2pQ8mH'; // Replace this with your real client ID
+        // Your actual GitHub OAuth app client ID
+        this.clientId = 'Ov23liQbUZvv1SGe4SwF'; // FlowDesk GitHub OAuth App
         
         // Determine redirect URI based on environment
         const isGitHubPages = window.location.hostname.includes('github.io');
