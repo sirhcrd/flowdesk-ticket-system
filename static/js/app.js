@@ -1,14 +1,15 @@
-// FlowDesk Frontend-Only Application with Local Storage
+// FlowDesk Professional Application with SQLite Database
 document.addEventListener('alpine:init', () => {
     Alpine.data('app', () => ({
         // State
         darkMode: localStorage.getItem('darkMode') === 'true' || false,
         currentView: 'dashboard',
+        dbReady: false,
         
-        // Data (stored locally)
-        tickets: JSON.parse(localStorage.getItem('flowdesk_tickets') || '[]'),
-        users: JSON.parse(localStorage.getItem('flowdesk_users') || '[{"id":1,"name":"Admin","email":"admin@flowdesk.com"}]'),
-        nextId: parseInt(localStorage.getItem('flowdesk_next_id') || '1'),
+        // Data (from SQLite database)
+        tickets: [],
+        users: [],
+        currentUser: null,
         
         // Forms
         newTicket: {
@@ -21,6 +22,7 @@ document.addEventListener('alpine:init', () => {
         
         // UI State
         showCreateTicket: false,
+        showAddUser: false,
         selectedTicket: null,
         showTicketDetail: false,
         
@@ -32,17 +34,78 @@ document.addEventListener('alpine:init', () => {
         editDescription: '',
         editAssignee: '',
         
+        // User management
+        newUser: {
+            name: '',
+            email: '',
+            avatar_color: '#3B82F6'
+        },
+        
+        // Avatar color options
+        avatarColors: [
+            '#3B82F6', // Blue
+            '#10B981', // Green  
+            '#F59E0B', // Yellow
+            '#EF4444', // Red
+            '#8B5CF6', // Purple
+            '#F97316', // Orange
+            '#06B6D4', // Cyan
+            '#84CC16', // Lime
+            '#EC4899', // Pink
+            '#6B7280'  // Gray
+        ],
+        
         // Initialize
-        init() {
-            // Load sample data if first time
-            if (this.tickets.length === 0) {
-                this.loadSampleData();
-            }
+        async init() {
+            console.log('🚀 Initializing FlowDesk Pro...');
             
             // Apply theme
             if (this.darkMode) {
                 document.documentElement.classList.add('dark');
             }
+            
+            // Initialize database
+            try {
+                await window.flowDeskDB.init();
+                await this.loadDataFromDatabase();
+                this.dbReady = true;
+                console.log('✅ FlowDesk Pro initialized successfully!');
+            } catch (error) {
+                console.error('❌ Failed to initialize database:', error);
+                // Fallback to localStorage mode
+                this.loadFallbackData();
+            }
+        },
+        
+        // Load data from SQLite database
+        async loadDataFromDatabase() {
+            console.log('📊 Loading data from database...');
+            
+            // Load users and set current user
+            this.users = window.flowDeskDB.getAllUsers();
+            const savedUserId = localStorage.getItem('flowdesk_current_user_id');
+            if (savedUserId && this.users.find(u => u.id == savedUserId)) {
+                this.currentUser = this.users.find(u => u.id == savedUserId);
+            } else {
+                // Default to first user
+                this.currentUser = this.users[0] || null;
+                if (this.currentUser) {
+                    localStorage.setItem('flowdesk_current_user_id', this.currentUser.id);
+                }
+            }
+            
+            // Load tickets
+            this.tickets = window.flowDeskDB.getAllTickets();
+            
+            console.log(`📋 Loaded ${this.tickets.length} tickets and ${this.users.length} users`);
+        },
+        
+        // Fallback data loading (in case database fails)
+        loadFallbackData() {
+            console.log('⚠️ Using fallback localStorage data...');
+            this.users = [{id: 1, name: 'Current User', email: '', avatar_color: '#3B82F6'}];
+            this.currentUser = this.users[0];
+            this.tickets = [];
         },
         
         // Local Storage Management
@@ -103,31 +166,66 @@ document.addEventListener('alpine:init', () => {
         },
         
         // Ticket Management
-        createTicket() {
-            const ticket = {
-                id: this.nextId++,
-                title: this.newTicket.title,
-                description: this.newTicket.description,
-                status: 'open',
-                priority: this.newTicket.priority,
-                assignee: this.newTicket.assignee,
-                creator: 'Current User',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                tags: this.newTicket.tags ? this.newTicket.tags.split(',').map(t => t.trim()) : [],
-                activities: [
-                    {
-                        id: 1,
-                        description: 'Ticket created by Current User',
-                        timestamp: new Date().toISOString()
-                    }
-                ]
-            };
+        async createTicket() {
+            if (!this.currentUser) {
+                alert('Please select a user first!');
+                return;
+            }
             
-            this.tickets.unshift(ticket);
-            this.saveToStorage();
-            this.resetNewTicketForm();
-            this.showCreateTicket = false;
+            console.log('🎫 Creating new ticket:', this.newTicket.title);
+            
+            try {
+                // Find assignee user ID
+                const assigneeUser = this.users.find(u => u.name === this.newTicket.assignee);
+                const assigneeId = assigneeUser ? assigneeUser.id : null;
+                
+                // Insert ticket
+                const result = window.flowDeskDB.exec(`
+                    INSERT INTO tickets (title, description, priority, assignee_id, creator_id, kanban_column_id) 
+                    VALUES (?, ?, ?, ?, ?, 1)
+                `, [
+                    this.newTicket.title,
+                    this.newTicket.description,
+                    this.newTicket.priority,
+                    assigneeId,
+                    this.currentUser.id
+                ]);
+                
+                if (result) {
+                    // Get the new ticket ID
+                    const ticketId = window.flowDeskDB.query('SELECT last_insert_rowid() as id').id;
+                    
+                    // Add tags if any
+                    if (this.newTicket.tags) {
+                        const tags = this.newTicket.tags.split(',').map(t => t.trim()).filter(t => t);
+                        for (const tag of tags) {
+                            window.flowDeskDB.exec(
+                                'INSERT INTO ticket_tags (ticket_id, tag) VALUES (?, ?)',
+                                [ticketId, tag]
+                            );
+                        }
+                    }
+                    
+                    // Add creation activity
+                    window.flowDeskDB.exec(`
+                        INSERT INTO activities (ticket_id, user_id, action_type, description)
+                        VALUES (?, ?, 'created', ?)
+                    `, [ticketId, this.currentUser.id, `Ticket created by ${this.currentUser.name}`]);
+                    
+                    // Reload tickets
+                    this.tickets = window.flowDeskDB.getAllTickets();
+                    
+                    this.resetNewTicketForm();
+                    this.showCreateTicket = false;
+                    
+                    console.log('✅ Ticket created successfully!');
+                } else {
+                    alert('Failed to create ticket. Please try again.');
+                }
+            } catch (error) {
+                console.error('❌ Error creating ticket:', error);
+                alert('Error creating ticket: ' + error.message);
+            }
         },
         
         updateTicketStatus(ticketId, newStatus) {
@@ -170,9 +268,63 @@ document.addEventListener('alpine:init', () => {
                 title: '',
                 description: '',
                 priority: 'medium',
-                assignee: 'Admin',
+                assignee: this.currentUser?.name || '',
                 tags: ''
             };
+        },
+        
+        // User Management
+        selectUser(user) {
+            console.log('👤 Switching to user:', user.name);
+            this.currentUser = user;
+            localStorage.setItem('flowdesk_current_user_id', user.id);
+        },
+        
+        async addNewUser() {
+            if (!this.newUser.name.trim()) return;
+            
+            console.log('➕ Adding new user:', this.newUser.name);
+            
+            // Check if user already exists
+            const existingUser = this.users.find(u => u.name.toLowerCase() === this.newUser.name.toLowerCase());
+            if (existingUser) {
+                alert('A user with this name already exists!');
+                return;
+            }
+            
+            try {
+                // Insert into database
+                const success = window.flowDeskDB.exec(
+                    'INSERT INTO users (name, email, avatar_color) VALUES (?, ?, ?)',
+                    [this.newUser.name.trim(), this.newUser.email.trim(), this.newUser.avatar_color]
+                );
+                
+                if (success) {
+                    // Reload users from database
+                    this.users = window.flowDeskDB.getAllUsers();
+                    
+                    // Find and select the new user
+                    const newUser = this.users.find(u => u.name === this.newUser.name.trim());
+                    if (newUser) {
+                        this.selectUser(newUser);
+                    }
+                    
+                    // Reset form
+                    this.newUser = {
+                        name: '',
+                        email: '',
+                        avatar_color: '#3B82F6'
+                    };
+                    
+                    this.showAddUser = false;
+                    console.log('✅ User added successfully!');
+                } else {
+                    alert('Failed to add user. Please try again.');
+                }
+            } catch (error) {
+                console.error('❌ Error adding user:', error);
+                alert('Error adding user: ' + error.message);
+            }
         },
         
         // Activity logging

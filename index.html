@@ -84,8 +84,61 @@
                     </div>
                 </div>
                 
-                <!-- Theme toggle only -->
+                <!-- User Management & Controls -->
                 <div class="flex items-center space-x-4">
+                    <!-- User Selector -->
+                    <div class="relative" x-data="{ userMenuOpen: false }">
+                        <button @click="userMenuOpen = !userMenuOpen" 
+                                class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-700 rounded-md transition-colors">
+                            <div class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                 :style="`background-color: ${currentUser?.avatar_color || '#3B82F6'}`"
+                                 x-text="currentUser?.name?.substring(0, 2).toUpperCase() || 'U'">
+                            </div>
+                            <span x-text="currentUser?.name || 'Select User'"></span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div x-show="userMenuOpen" @click.away="userMenuOpen = false"
+                             class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <div class="p-2">
+                                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 px-2">
+                                    Available Users
+                                </div>
+                                <template x-for="user in users" :key="user.id">
+                                    <button @click="selectUser(user); userMenuOpen = false" 
+                                            :class="currentUser?.id === user.id ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                            class="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-md transition-colors">
+                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
+                                             :style="`background-color: ${user.avatar_color}`"
+                                             x-text="user.name.substring(0, 2).toUpperCase()">
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white" x-text="user.name"></div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400" x-text="user.email || 'No email'"></div>
+                                        </div>
+                                    </button>
+                                </template>
+                                
+                                <hr class="my-2 border-gray-200 dark:border-gray-600">
+                                
+                                <button @click="showAddUser = true; userMenuOpen = false" 
+                                        class="w-full flex items-center space-x-3 px-3 py-2 text-left rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <div class="w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">Add New User</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Create a new user profile</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Theme toggle -->
                     <button @click="toggleTheme()" 
                             class="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
@@ -99,7 +152,7 @@
                     
                     <!-- App Info -->
                     <div class="text-sm text-gray-600 dark:text-gray-400">
-                        Local Storage Mode
+                        SQLite Database
                     </div>
                 </div>
             </div>
@@ -489,6 +542,64 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div x-show="showAddUser" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md" @click.away="showAddUser = false">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Add New User</h3>
+                    <button @click="showAddUser = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="addNewUser()">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name *</label>
+                        <input type="text" x-model="newUser.name" required
+                               placeholder="e.g. John Smith"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email (Optional)</label>
+                        <input type="email" x-model="newUser.email"
+                               placeholder="john@example.com"
+                               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Avatar Color</label>
+                        <div class="flex space-x-2">
+                            <template x-for="color in avatarColors" :key="color">
+                                <button type="button" 
+                                        @click="newUser.avatar_color = color"
+                                        :class="newUser.avatar_color === color ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-300' : ''"
+                                        class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium transition-all"
+                                        :style="`background-color: ${color}`"
+                                        x-text="newUser.name ? newUser.name.substring(0, 2).toUpperCase() : 'U'">
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" @click="showAddUser = false"
+                                class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                            Add User
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
