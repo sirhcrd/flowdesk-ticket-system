@@ -747,52 +747,124 @@ document.addEventListener('alpine:init', () => {
         
         // Export Functions
         exportToCSV() {
-            const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Assignee', 'Creator', 'Created', 'Updated', 'Tags'];
+            console.log('📊 Exporting tickets to CSV...');
+            const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Assignee', 'Creator', 'Kanban Column', 'Created', 'Updated', 'Tags'];
+            
             const csvContent = [
                 headers.join(','),
                 ...this.tickets.map(ticket => [
                     ticket.id,
-                    `"${ticket.title}"`,
-                    `"${ticket.description}"`,
-                    ticket.status,
-                    ticket.priority,
-                    ticket.assignee,
-                    ticket.creator,
-                    new Date(ticket.created_at).toLocaleDateString(),
-                    new Date(ticket.updated_at).toLocaleDateString(),
-                    `"${ticket.tags ? ticket.tags.join(', ') : ''}"`
+                    `"${ticket.title || ''}"`,
+                    `"${(ticket.description || '').replace(/"/g, '""')}"`, // Escape quotes
+                    ticket.status || '',
+                    ticket.priority || '',
+                    `"${ticket.assignee_name || 'Unassigned'}"`,
+                    `"${ticket.creator_name || 'Unknown'}"`,
+                    `"${ticket.kanban_column_name || 'No Column'}"`,
+                    ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '',
+                    ticket.updated_at ? new Date(ticket.updated_at).toLocaleDateString() : '',
+                    `"${ticket.tags || ''}"`
                 ].join(','))
-            ].join('\\n');
+            ].join('\n');
             
-            this.downloadFile(csvContent, 'flowdesk-tickets.csv', 'text/csv');
+            this.downloadFile(csvContent, `flowdesk-tickets-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            console.log('✅ CSV export completed!');
         },
         
         exportToExcel() {
+            console.log('📊 Exporting tickets to Excel...');
             // Create HTML table for Excel
             const table = `
-                <table>
-                    <tr>
+                <table border="1">
+                    <tr style="background-color: #f0f0f0; font-weight: bold;">
                         <th>ID</th><th>Title</th><th>Description</th><th>Status</th><th>Priority</th>
-                        <th>Assignee</th><th>Creator</th><th>Created</th><th>Updated</th><th>Tags</th>
+                        <th>Assignee</th><th>Creator</th><th>Kanban Column</th><th>Created</th><th>Updated</th><th>Tags</th>
                     </tr>
                     ${this.tickets.map(ticket => `
                         <tr>
                             <td>${ticket.id}</td>
-                            <td>${ticket.title}</td>
-                            <td>${ticket.description}</td>
-                            <td>${ticket.status}</td>
-                            <td>${ticket.priority}</td>
-                            <td>${ticket.assignee}</td>
-                            <td>${ticket.creator}</td>
-                            <td>${new Date(ticket.created_at).toLocaleDateString()}</td>
-                            <td>${new Date(ticket.updated_at).toLocaleDateString()}</td>
-                            <td>${ticket.tags ? ticket.tags.join(', ') : ''}</td>
+                            <td>${ticket.title || ''}</td>
+                            <td>${(ticket.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+                            <td>${ticket.status || ''}</td>
+                            <td>${ticket.priority || ''}</td>
+                            <td>${ticket.assignee_name || 'Unassigned'}</td>
+                            <td>${ticket.creator_name || 'Unknown'}</td>
+                            <td>${ticket.kanban_column_name || 'No Column'}</td>
+                            <td>${ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : ''}</td>
+                            <td>${ticket.updated_at ? new Date(ticket.updated_at).toLocaleDateString() : ''}</td>
+                            <td>${ticket.tags || ''}</td>
                         </tr>
                     `).join('')}
                 </table>
             `;
             
-            this.downloadFile(table, 'flowdesk-tickets.xls', 'application/vnd.ms-excel');
+            this.downloadFile(table, `flowdesk-tickets-${new Date().toISOString().split('T')[0]}.xls`, 'application/vnd.ms-excel');
+            console.log('✅ Excel export completed!');
+        },
+        
+        exportToJSON() {
+            console.log('📊 Exporting tickets to JSON...');
+            
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                version: '2.0',
+                system: 'FlowDesk Pro with SQLite',
+                totalTickets: this.tickets.length,
+                users: this.users.map(user => ({
+                    id: user.id,
+                    name: user.name,
+                    email: user.email || '',
+                    avatar_color: user.avatar_color
+                })),
+                kanbanColumns: this.kanbanColumns.map(col => ({
+                    id: col.id,
+                    name: col.name,
+                    color: col.color,
+                    position: col.position
+                })),
+                tickets: this.tickets.map(ticket => ({
+                    id: ticket.id,
+                    title: ticket.title,
+                    description: ticket.description,
+                    status: ticket.status,
+                    priority: ticket.priority,
+                    assignee: {
+                        id: ticket.assignee_id,
+                        name: ticket.assignee_name
+                    },
+                    creator: {
+                        id: ticket.creator_id,
+                        name: ticket.creator_name
+                    },
+                    kanbanColumn: {
+                        id: ticket.kanban_column_id,
+                        name: ticket.kanban_column_name,
+                        position: ticket.kanban_position
+                    },
+                    dates: {
+                        created: ticket.created_at,
+                        updated: ticket.updated_at
+                    },
+                    tags: ticket.tags ? ticket.tags.split(',').map(t => t.trim()) : [],
+                    activities: ticket.activities || []
+                }))
+            };
+            
+            const jsonContent = JSON.stringify(exportData, null, 2);
+            this.downloadFile(jsonContent, `flowdesk-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+            console.log('✅ JSON export completed!');
+        },
+        
+        // Export SQLite database file
+        exportDatabase() {
+            console.log('📊 Exporting SQLite database...');
+            try {
+                window.flowDeskDB.exportDatabase();
+                console.log('✅ Database export completed!');
+            } catch (error) {
+                console.error('❌ Database export failed:', error);
+                alert('Failed to export database: ' + error.message);
+            }
         },
         
         downloadFile(content, filename, mimeType) {
