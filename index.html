@@ -29,7 +29,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- Custom styles -->
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="./static/css/styles.css">
     
     <!-- Heroicons for beautiful icons -->
     <script src="https://unpkg.com/heroicons@2.0.18/24/outline/index.js" type="module"></script>
@@ -183,7 +183,7 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex-1">
                                         <h4 class="text-sm font-medium text-gray-900 dark:text-white" x-text="ticket.title"></h4>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" x-text="`#${ticket.id} • Created by ${ticket.creator.full_name}`"></p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" x-text="`#${ticket.id} • Created by ${ticket.creator}`"></p>
                                     </div>
                                     <div class="flex items-center space-x-3">
                                         <span :class="getStatusColor(ticket.status)" 
@@ -350,6 +350,6 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="/static/js/app.js"></script>
+    <script src="./static/js/app.js"></script>
 </body>
 </html>
