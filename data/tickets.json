@@ -4,7 +4,7 @@
       "id": 1,
       "title": "bug: creator id",
       "description": "creator id",
-      "status": "open",
+      "status": "in_progress",
       "priority": "urgent",
       "assignee_id": 1,
       "creator_id": 1,
@@ -14,11 +14,12 @@
         "bug"
       ],
       "created_at": "2025-09-25T18:24:42.138Z",
-      "updated_at": "2025-09-25T18:24:42.138Z"
+      "updated_at": "2025-09-25T18:24:49.258Z",
+      "updated_by": 1
     }
   ],
   "nextId": 2,
-  "lastUpdated": "2025-09-25T18:24:42.138Z",
+  "lastUpdated": "2025-09-25T18:24:49.258Z",
   "version": "3.0",
   "updatedBy": "sirhcrd"
 }
