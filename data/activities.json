@@ -63,9 +63,17 @@
       "action_type": "updated",
       "description": "priority changed from \"medium\" to \"high\"",
       "timestamp": "2025-09-25T17:38:50.681Z"
+    },
+    {
+      "id": 9,
+      "ticket_id": 4,
+      "user_id": 1,
+      "action_type": "created",
+      "description": "Ticket created",
+      "timestamp": "2025-09-25T17:39:44.567Z"
     }
   ],
-  "nextId": 9,
-  "lastUpdated": "2025-09-25T17:38:50.681Z",
+  "nextId": 10,
+  "lastUpdated": "2025-09-25T17:39:44.567Z",
   "updatedBy": "sirhcrd"
 }
