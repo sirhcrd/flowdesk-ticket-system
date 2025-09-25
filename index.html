@@ -154,17 +154,18 @@
                         </div>
 
                         <div x-show="isAuthenticated" class="flex items-center space-x-2">
-                            <!-- Authenticated User Info -->
-                            <div class="flex items-center space-x-2 px-3 py-1 bg-green-50 dark:bg-green-900 rounded-md">
+                            <!-- Authenticated User Info with Status -->
+                            <div class="flex items-center space-x-2 px-3 py-2 bg-green-50 dark:bg-green-900 rounded-md border border-green-200 dark:border-green-800">
                                 <img :src="githubUser?.avatar_url" :alt="githubUser?.name" 
                                      class="w-6 h-6 rounded-full" x-show="githubUser?.avatar_url">
                                 <span class="text-green-800 dark:text-green-200 text-sm font-medium" x-text="githubUser?.login || 'GitHub User'"></span>
-                                <span class="text-green-600 dark:text-green-400 text-xs">✓ Connected</span>
+                                <span x-show="loading" class="text-blue-600 dark:text-blue-400 text-xs font-medium">🔄 Syncing...</span>
+                                <span x-show="!loading" class="text-green-600 dark:text-green-400 text-xs font-medium">💾 Full Access</span>
                             </div>
 
                             <!-- Logout Button -->
                             <button @click="logoutFromGitHub()" 
-                                    class="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                    class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                                     title="Logout from GitHub">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -181,13 +182,7 @@
                             </svg>
                         </button>
                         
-                        <!-- Status Indicator -->
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                            <span x-show="loading" class="text-blue-600 dark:text-blue-400">🔄 Syncing...</span>
-                            <span x-show="!loading && dbReady && isAuthenticated" class="text-green-600 dark:text-green-400">� Full Access</span>
-                            <span x-show="!loading && dbReady && !isAuthenticated" class="text-orange-600 dark:text-orange-400">� View Only</span>
-                            <span x-show="!loading && !dbReady" class="text-red-600 dark:text-red-400">❌ Offline</span>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -899,10 +894,22 @@
                         </div>
                         
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assignee</label>
-                            <input type="text" x-model="newTicket.assignee"
-                                   placeholder="Person responsible"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Creator</label>
+                            <div class="flex items-center space-x-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-300 dark:border-gray-600">
+                                <!-- Creator Avatar -->
+                                <div x-show="isAuthenticated && githubUser?.avatar_url">
+                                    <img :src="githubUser?.avatar_url" :alt="githubUser?.name" class="w-6 h-6 rounded-full">
+                                </div>
+                                <div x-show="currentUser && !githubUser?.avatar_url" 
+                                     class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                     :style="`background-color: ${currentUser?.avatar_color || '#3B82F6'}`"
+                                     x-text="(currentUser?.name || 'U').substring(0, 2).toUpperCase()">
+                                </div>
+                                
+                                <!-- Creator Name -->
+                                <span class="text-sm text-gray-900 dark:text-gray-100" 
+                                      x-text="isAuthenticated ? (githubUser?.login || githubUser?.name || 'GitHub User') : (currentUser?.name || 'Unknown User')"></span>
+                            </div>
                         </div>
                     </div>
                     

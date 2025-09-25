@@ -139,20 +139,20 @@ document.addEventListener('alpine:init', () => {
             try {
                 await window.githubAuth.authenticate();
                 
-                // Refresh the UI to show the authenticated state
-                this.$nextTick(() => {
-                    // Force Alpine to re-evaluate computed properties
-                    this.$nextTick();
-                });
-                
-                // After successful authentication, add GitHub user to database
+                // After successful authentication, add GitHub user to database and set as current
                 const githubUser = this.githubUser;
                 if (githubUser) {
-                    await this.ensureGitHubUserInDatabase(githubUser);
+                    const dbUser = await this.ensureGitHubUserInDatabase(githubUser);
+                    
+                    // Set the GitHub user as the current user automatically
+                    this.currentUser = dbUser;
+                    localStorage.setItem('flowdesk_current_user_id', dbUser.id);
+                    
+                    // Reload data from GitHub
                     await this.loadDataFromGitHub();
                 }
                 
-                console.log('✅ Authentication and setup complete');
+                console.log('✅ Authentication and setup complete. Current user:', this.currentUser?.name);
             } catch (error) {
                 console.error('❌ Authentication failed:', error);
                 alert('GitHub authentication failed: ' + error.message);
@@ -177,16 +177,24 @@ document.addEventListener('alpine:init', () => {
                         github_id: githubUser.id
                     });
                     
-                    // Auto-select the new user
-                    this.selectUser(newUser);
                     console.log('✅ GitHub user added to database:', newUser.name);
+                    return newUser;
                 } catch (error) {
                     console.warn('Could not add GitHub user to database:', error);
+                    // Return a temporary user object if database creation fails
+                    return {
+                        id: Date.now(), // Temporary ID
+                        name: githubUser.name || githubUser.login,
+                        email: githubUser.email || '',
+                        avatar_color: '#3B82F6',
+                        github_login: githubUser.login,
+                        github_avatar_url: githubUser.avatar_url,
+                        github_id: githubUser.id
+                    };
                 }
             } else {
-                // Select the existing user
-                this.selectUser(existingUser);
                 console.log('👤 Using existing user:', existingUser.name);
+                return existingUser;
             }
         },
 
@@ -272,16 +280,30 @@ document.addEventListener('alpine:init', () => {
 
         // Ticket Management
         async createTicket() {
-            if (!this.currentUser) {
-                alert('Please select a user first!');
+            if (!this.newTicket.title.trim()) {
+                alert('Please enter a ticket title!');
                 return;
             }
-            
-            if (!this.newTicket.title.trim()) return;
             
             // Check authentication for write operations
             if (!this.canWrite) {
                 this.showAuthPrompt();
+                return;
+            }
+            
+            // Ensure we have a current user (GitHub user or default)
+            let creatorUser = this.currentUser;
+            if (!creatorUser && this.isAuthenticated) {
+                // If authenticated but no currentUser, create one from GitHub user
+                const githubUser = this.githubUser;
+                if (githubUser) {
+                    creatorUser = await this.ensureGitHubUserInDatabase(githubUser);
+                    this.currentUser = creatorUser;
+                }
+            }
+            
+            if (!creatorUser) {
+                alert('Unable to determine user for ticket creation. Please try authenticating again.');
                 return;
             }
             
@@ -293,8 +315,8 @@ document.addEventListener('alpine:init', () => {
                     description: this.newTicket.description.trim(),
                     status: 'open',
                     priority: this.newTicket.priority,
-                    assignee_id: this.newTicket.assignee_id || this.currentUser.id,
-                    creator_id: this.currentUser.id,
+                    assignee_id: this.newTicket.assignee_id || creatorUser.id,
+                    creator_id: creatorUser.id,
                     kanban_column_id: this.kanbanColumns[0]?.id || 1,
                     kanban_position: 0,
                     tags: this.newTicket.tags ? this.newTicket.tags.split(',').map(t => t.trim()) : []
@@ -306,7 +328,7 @@ document.addEventListener('alpine:init', () => {
                 this.resetNewTicketForm();
                 this.showCreateTicket = false;
                 
-                console.log('✅ Ticket created successfully!');
+                console.log('✅ Ticket created successfully by:', creatorUser.name);
             } catch (error) {
                 console.error('❌ Error creating ticket:', error);
                 if (error.message.includes('authentication')) {
