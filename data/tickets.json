@@ -2,45 +2,9 @@
   "tickets": [
     {
       "id": 1,
-      "title": "Welcome to FlowDesk Collaborative!",
-      "description": "This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!\n\nChange",
-      "status": "open",
-      "priority": "high",
-      "assignee_id": 2,
-      "creator_id": 1,
-      "kanban_column_id": 1,
-      "kanban_position": 0,
-      "created_at": "2025-09-25T10:00:00.000Z",
-      "updated_at": "2025-09-25T17:38:50.227Z",
-      "tags": [
-        "welcome",
-        "collaboration",
-        "github"
-      ],
-      "updated_by": 1
-    },
-    {
-      "id": 2,
-      "title": "Test GitHub Integration",
-      "description": "Create a ticket to test that the GitHub API integration is working correctly for collaborative editing.",
+      "title": "bug: creator id",
+      "description": "creator id",
       "status": "in_progress",
-      "priority": "high",
-      "assignee_id": 2,
-      "creator_id": 2,
-      "kanban_column_id": 2,
-      "kanban_position": 0,
-      "created_at": "2025-09-25T11:00:00.000Z",
-      "updated_at": "2025-09-25T15:30:00.000Z",
-      "tags": [
-        "testing",
-        "github-api"
-      ]
-    },
-    {
-      "id": 3,
-      "title": "Bug: Sign in with GitHub button doesn't change",
-      "description": "Sign in with GitHub button doesn't change upon successful login",
-      "status": "open",
       "priority": "urgent",
       "assignee_id": 1,
       "creator_id": 1,
@@ -49,29 +13,13 @@
       "tags": [
         "bug"
       ],
-      "created_at": "2025-09-25T17:16:38.110Z",
-      "updated_at": "2025-09-25T17:17:06.485Z",
+      "created_at": "2025-09-25T18:24:42.138Z",
+      "updated_at": "2025-09-25T18:24:49.258Z",
       "updated_by": 1
-    },
-    {
-      "id": 4,
-      "title": "BUG: Sign in button doesn't change again",
-      "description": "Sign in button doesn't change again",
-      "status": "open",
-      "priority": "medium",
-      "assignee_id": 1,
-      "creator_id": 1,
-      "kanban_column_id": 1,
-      "kanban_position": 0,
-      "tags": [
-        "bug"
-      ],
-      "created_at": "2025-09-25T17:39:44.042Z",
-      "updated_at": "2025-09-25T17:39:44.042Z"
     }
   ],
-  "nextId": 5,
-  "lastUpdated": "2025-09-25T17:39:44.042Z",
+  "nextId": 2,
+  "lastUpdated": "2025-09-25T18:24:49.258Z",
   "version": "3.0",
   "updatedBy": "sirhcrd"
 }
