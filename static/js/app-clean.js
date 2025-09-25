@@ -198,15 +198,29 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        logoutFromGitHub() {
-            window.githubAuth.logout();
-            
-            // Refresh the UI to show the logged out state
-            this.$nextTick(() => {
-                this.$nextTick();
-            });
-            
-            console.log('👋 Logged out from GitHub');
+        async logoutFromGitHub() {
+            try {
+                // Clear all application state
+                this.isAuthenticated = false;
+                this.githubUser = null;
+                this.currentUser = null;
+                this.tickets = [];
+                this.users = [];
+                this.kanbanColumns = [];
+                this.activities = [];
+                
+                // Close any open modals
+                this.showTicketDetail = false;
+                this.showNewTicket = false;
+                this.showAddUser = false;
+                
+                // Logout from GitHub OAuth
+                window.githubAuth.logout();
+                
+                console.log('👋 Logged out successfully');
+            } catch (error) {
+                console.error('❌ Error during logout:', error);
+            }
         },
 
         get isAuthenticated() {
@@ -407,6 +421,54 @@ document.addEventListener('alpine:init', () => {
             this.editingAssignee = false;
         },
 
+        async saveTitle() {
+            if (!this.editTitle || !this.selectedTicket) return;
+            
+            try {
+                await window.githubDB.updateTicket(this.selectedTicket.id, {
+                    title: this.editTitle,
+                    updated_by: this.currentUser?.id
+                });
+                
+                // Add activity
+                if (this.currentUser) {
+                    await window.githubDB.addActivity(this.selectedTicket.id, this.currentUser.id, 'updated', `Title changed to "${this.editTitle}"`);
+                }
+                
+                await this.loadDataFromGitHub();
+                this.selectedTicket = window.githubDB.getTicketById(this.selectedTicket.id);
+                this.editingTitle = false;
+                console.log('✅ Title updated successfully!');
+            } catch (error) {
+                console.error('❌ Error updating title:', error);
+                alert('Failed to update title: ' + error.message);
+            }
+        },
+
+        async saveDescription() {
+            if (!this.selectedTicket) return;
+            
+            try {
+                await window.githubDB.updateTicket(this.selectedTicket.id, {
+                    description: this.editDescription || '',
+                    updated_by: this.currentUser?.id
+                });
+                
+                // Add activity
+                if (this.currentUser) {
+                    await window.githubDB.addActivity(this.selectedTicket.id, this.currentUser.id, 'updated', 'Description updated');
+                }
+                
+                await this.loadDataFromGitHub();
+                this.selectedTicket = window.githubDB.getTicketById(this.selectedTicket.id);
+                this.editingDescription = false;
+                console.log('✅ Description updated successfully!');
+            } catch (error) {
+                console.error('❌ Error updating description:', error);
+                alert('Failed to update description: ' + error.message);
+            }
+        },
+
         // Kanban Functions
         getColumnTickets(columnId) {
             return this.tickets.filter(ticket => ticket.kanban_column_id === columnId)
@@ -533,6 +595,83 @@ document.addEventListener('alpine:init', () => {
             
             const jsonContent = JSON.stringify(exportData, null, 2);
             this.downloadFile(jsonContent, `flowdesk-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+        },
+
+        exportToXLSX() {
+            // For XLSX export, we'll create a more advanced CSV that Excel can import nicely
+            const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Assignee', 'Creator', 'Kanban Column', 'Created Date', 'Updated Date', 'Tags'];
+            
+            if (!this.tickets || this.tickets.length === 0) {
+                alert('No tickets to export!');
+                return;
+            }
+            
+            // Create tab-separated values for better Excel compatibility
+            const tsvContent = [
+                headers.join('\t'),
+                ...this.tickets.map(ticket => [
+                    ticket.id,
+                    (ticket.title || '').replace(/\t/g, ' '),
+                    (ticket.description || '').replace(/\t/g, ' ').replace(/\n/g, ' '),
+                    ticket.status || '',
+                    ticket.priority || '',
+                    ticket.assignee_name || 'Unassigned',
+                    ticket.creator_name || 'Unknown',
+                    ticket.kanban_column_name || 'No Column',
+                    ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : '',
+                    ticket.updated_at ? new Date(ticket.updated_at).toLocaleDateString() : '',
+                    Array.isArray(ticket.tags) ? ticket.tags.join(', ') : (ticket.tags || '')
+                ].join('\t'))
+            ].join('\n');
+            
+            this.downloadFile(tsvContent, `flowdesk-tickets-${new Date().toISOString().split('T')[0]}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        },
+
+        exportToDatabase() {
+            // Export in a database-friendly format (SQL-like)
+            if (!this.tickets || this.tickets.length === 0) {
+                alert('No tickets to export!');
+                return;
+            }
+            
+            const sqlContent = [
+                '-- FlowDesk Tickets Database Export',
+                `-- Generated: ${new Date().toISOString()}`,
+                `-- Total Tickets: ${this.tickets.length}`,
+                '',
+                '-- Users Table',
+                'CREATE TABLE users (',
+                '  id INTEGER PRIMARY KEY,',
+                '  name VARCHAR(255),',
+                '  email VARCHAR(255),',
+                '  github_login VARCHAR(255)',
+                ');',
+                '',
+                ...this.users.map(user => 
+                    `INSERT INTO users (id, name, email, github_login) VALUES (${user.id}, '${(user.name || '').replace(/'/g, "''")}', '${(user.email || '').replace(/'/g, "''")}', '${(user.github_login || '').replace(/'/g, "''")}');`
+                ),
+                '',
+                '-- Tickets Table',
+                'CREATE TABLE tickets (',
+                '  id INTEGER PRIMARY KEY,',
+                '  title VARCHAR(255),',
+                '  description TEXT,',
+                '  status VARCHAR(50),',
+                '  priority VARCHAR(50),',
+                '  assignee_id INTEGER,',
+                '  created_by INTEGER,',
+                '  created_at DATETIME,',
+                '  updated_at DATETIME',
+                ');',
+                '',
+                ...this.tickets.map(ticket => {
+                    const title = (ticket.title || '').replace(/'/g, "''");
+                    const description = (ticket.description || '').replace(/'/g, "''");
+                    return `INSERT INTO tickets (id, title, description, status, priority, assignee_id, created_by, created_at, updated_at) VALUES (${ticket.id}, '${title}', '${description}', '${ticket.status}', '${ticket.priority}', ${ticket.assignee_id || 'NULL'}, ${ticket.created_by || 'NULL'}, '${ticket.created_at}', '${ticket.updated_at}');`;
+                })
+            ].join('\n');
+            
+            this.downloadFile(sqlContent, `flowdesk-database-${new Date().toISOString().split('T')[0]}.sql`, 'application/sql');
         },
 
         downloadFile(content, filename, mimeType) {
