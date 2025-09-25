@@ -104,6 +104,11 @@
                                         class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                                     🗄️ Export Database (.db)
                                 </button>
+                                <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                                <button @click="testExport(); exportOpen = false"
+                                        class="block w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    🧪 Test Export (Debug)
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -748,6 +748,14 @@ document.addEventListener('alpine:init', () => {
         // Export Functions
         exportToCSV() {
             console.log('📊 Exporting tickets to CSV...');
+            console.log('📋 Current tickets:', this.tickets);
+            console.log('📊 Ticket count:', this.tickets.length);
+            
+            if (!this.tickets || this.tickets.length === 0) {
+                alert('No tickets to export! Please create some tickets first.');
+                return;
+            }
+            
             const headers = ['ID', 'Title', 'Description', 'Status', 'Priority', 'Assignee', 'Creator', 'Kanban Column', 'Created', 'Updated', 'Tags'];
             
             const csvContent = [
@@ -773,6 +781,13 @@ document.addEventListener('alpine:init', () => {
         
         exportToExcel() {
             console.log('📊 Exporting tickets to Excel...');
+            console.log('📋 Current tickets:', this.tickets);
+            
+            if (!this.tickets || this.tickets.length === 0) {
+                alert('No tickets to export! Please create some tickets first.');
+                return;
+            }
+            
             // Create HTML table for Excel
             const table = `
                 <table border="1">
@@ -804,6 +819,12 @@ document.addEventListener('alpine:init', () => {
         
         exportToJSON() {
             console.log('📊 Exporting tickets to JSON...');
+            console.log('📋 Current tickets:', this.tickets);
+            
+            if (!this.tickets || this.tickets.length === 0) {
+                alert('No tickets to export! Please create some tickets first.');
+                return;
+            }
             
             const exportData = {
                 exportDate: new Date().toISOString(),
@@ -855,6 +876,13 @@ document.addEventListener('alpine:init', () => {
             console.log('✅ JSON export completed!');
         },
         
+        // Test export function
+        testExport() {
+            console.log('🧪 Testing export functionality...');
+            const testContent = 'This is a test export file\\nCreated at: ' + new Date().toISOString();
+            this.downloadFile(testContent, 'test-export.txt', 'text/plain');
+        },
+        
         // Export SQLite database file
         exportDatabase() {
             console.log('📊 Exporting SQLite database...');
@@ -868,15 +896,23 @@ document.addEventListener('alpine:init', () => {
         },
         
         downloadFile(content, filename, mimeType) {
-            const blob = new Blob([content], { type: mimeType });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+            console.log('💾 Downloading file:', filename, 'Type:', mimeType, 'Size:', content.length);
+            try {
+                const blob = new Blob([content], { type: mimeType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                console.log('✅ File download triggered successfully');
+            } catch (error) {
+                console.error('❌ Download failed:', error);
+                alert('Download failed: ' + error.message);
+            }
         },
         
         // UI Helpers
