@@ -71,13 +71,24 @@ document.addEventListener('alpine:init', () => {
             
             try {
                 this.loading = true;
+                
+                // Initialize GitHub database (will try to load public data)
                 await window.githubDB.init();
                 await this.loadDataFromGitHub();
+                
                 this.dbReady = true;
                 console.log('✅ FlowDesk Collaborative ready!');
+                
+                // Check if user is returning from OAuth
+                if (window.githubAuth.isAuthenticated()) {
+                    console.log('🔑 User is authenticated with GitHub');
+                }
+                
             } catch (error) {
                 console.error('❌ Failed to initialize:', error);
-                alert('Failed to connect to GitHub database. Please check your internet connection.');
+                // Don't block the app if GitHub is unavailable
+                this.dbReady = false;
+                console.log('📱 Running in offline mode');
             } finally {
                 this.loading = false;
             }
@@ -115,8 +126,49 @@ document.addEventListener('alpine:init', () => {
                 console.log('🔄 Data synced with GitHub');
             } catch (error) {
                 console.error('❌ Sync failed:', error);
+                if (error.message.includes('authentication')) {
+                    this.showAuthPrompt();
+                }
             } finally {
                 this.loading = false;
+            }
+        },
+
+        // Authentication methods
+        async loginWithGitHub() {
+            try {
+                await window.githubDB.authenticate();
+            } catch (error) {
+                console.error('❌ Authentication failed:', error);
+                alert('GitHub authentication failed: ' + error.message);
+            }
+        },
+
+        logoutFromGitHub() {
+            window.githubDB.logout();
+            console.log('👋 Logged out from GitHub');
+        },
+
+        get isAuthenticated() {
+            return window.githubDB ? window.githubDB.isAuthenticated() : false;
+        },
+
+        get githubUser() {
+            return window.githubDB ? window.githubDB.getAuthenticatedUser() : null;
+        },
+
+        get canWrite() {
+            return window.githubDB ? window.githubDB.canWrite() : false;
+        },
+
+        showAuthPrompt() {
+            const needsAuth = confirm(
+                'GitHub authentication is required to save data to the collaborative workspace. ' +
+                'Would you like to login with GitHub now?'
+            );
+            
+            if (needsAuth) {
+                this.loginWithGitHub();
             }
         },
 
@@ -129,6 +181,12 @@ document.addEventListener('alpine:init', () => {
         
         async addNewUser() {
             if (!this.newUser.name.trim()) return;
+            
+            // Check authentication for write operations
+            if (!this.canWrite) {
+                this.showAuthPrompt();
+                return;
+            }
             
             // Check if user already exists
             const existingUser = this.users.find(u => u.name.toLowerCase() === this.newUser.name.toLowerCase());
@@ -150,7 +208,11 @@ document.addEventListener('alpine:init', () => {
                 console.log('✅ User added successfully!');
             } catch (error) {
                 console.error('❌ Error adding user:', error);
-                alert('Failed to add user: ' + error.message);
+                if (error.message.includes('authentication')) {
+                    this.showAuthPrompt();
+                } else {
+                    alert('Failed to add user: ' + error.message);
+                }
             } finally {
                 this.loading = false;
             }
@@ -164,6 +226,12 @@ document.addEventListener('alpine:init', () => {
             }
             
             if (!this.newTicket.title.trim()) return;
+            
+            // Check authentication for write operations
+            if (!this.canWrite) {
+                this.showAuthPrompt();
+                return;
+            }
             
             try {
                 this.loading = true;
@@ -189,7 +257,11 @@ document.addEventListener('alpine:init', () => {
                 console.log('✅ Ticket created successfully!');
             } catch (error) {
                 console.error('❌ Error creating ticket:', error);
-                alert('Failed to create ticket: ' + error.message);
+                if (error.message.includes('authentication')) {
+                    this.showAuthPrompt();
+                } else {
+                    alert('Failed to create ticket: ' + error.message);
+                }
             } finally {
                 this.loading = false;
             }

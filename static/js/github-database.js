@@ -1,4 +1,4 @@
-// FlowDesk GitHub JSON Database Module
+// FlowDesk GitHub JSON Database Module with OAuth
 class GitHubDatabase {
     constructor() {
         this.owner = 'sirhcrd'; // GitHub username
@@ -6,6 +6,9 @@ class GitHubDatabase {
         this.branch = 'main';
         this.baseURL = `https://api.github.com/repos/${this.owner}/${this.repo}/contents/data`;
         this.initialized = false;
+        
+        // OAuth authentication
+        this.auth = window.githubAuth;
         
         // Cache for data files
         this.cache = {
@@ -58,7 +61,14 @@ class GitHubDatabase {
         const url = `${this.baseURL}/${filename}`;
         
         try {
-            const response = await fetch(url);
+            // Use authenticated request if available, fallback to public access
+            let response;
+            if (this.auth && this.auth.isAuthenticated()) {
+                response = await this.auth.makeAuthenticatedRequest(url);
+            } else {
+                // Try public access first
+                response = await fetch(url);
+            }
             
             if (!response.ok) {
                 if (response.status === 404) {
@@ -83,16 +93,22 @@ class GitHubDatabase {
     }
 
     async saveFile(filename, data) {
+        // Check if user is authenticated
+        if (!this.auth || !this.auth.isAuthenticated()) {
+            throw new Error('GitHub authentication required for saving data. Please login with GitHub.');
+        }
+        
         const url = `${this.baseURL}/${filename}`;
         
         // Add metadata
         data.lastUpdated = new Date().toISOString();
+        data.updatedBy = this.auth.getCurrentUser()?.login || 'Unknown';
         
         const content = JSON.stringify(data, null, 2);
-        const encodedContent = btoa(content);
+        const encodedContent = btoa(unescape(encodeURIComponent(content))); // Better UTF-8 support
         
         const body = {
-            message: `Update ${filename} via FlowDesk`,
+            message: `Update ${filename} via FlowDesk by ${data.updatedBy}`,
             content: encodedContent,
             branch: this.branch
         };
@@ -103,11 +119,8 @@ class GitHubDatabase {
         }
         
         try {
-            const response = await fetch(url, {
+            const response = await this.auth.makeAuthenticatedRequest(url, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(body)
             });
             
@@ -330,6 +343,33 @@ class GitHubDatabase {
         columns.columns = columns.columns.filter(c => c.id !== parseInt(id));
         await this.saveFile('columns.json', columns);
         return true;
+    }
+
+    // Authentication methods
+    isAuthenticated() {
+        return this.auth && this.auth.isAuthenticated();
+    }
+
+    getAuthenticatedUser() {
+        return this.auth ? this.auth.getCurrentUser() : null;
+    }
+
+    async authenticate() {
+        if (this.auth) {
+            await this.auth.authenticate();
+        } else {
+            throw new Error('GitHub OAuth not initialized');
+        }
+    }
+
+    logout() {
+        if (this.auth) {
+            this.auth.logout();
+        }
+    }
+
+    canWrite() {
+        return this.isAuthenticated();
     }
 
     // Utility methods
