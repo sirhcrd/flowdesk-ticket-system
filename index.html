@@ -44,30 +44,158 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- Logo -->
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <span class="text-white font-bold text-sm">FD</span>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">FD</span>
+                        </div>
+                        <h1 class="text-xl font-bold text-gray-900 dark:text-white">FlowDesk</h1>
                     </div>
-                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">FlowDesk</h1>
+                    
+                    <!-- Mobile Layout Dropdown -->
+                    <div class="md:hidden relative" x-data="{ mobileLayoutOpen: false }">
+                        <button @click="mobileLayoutOpen = !mobileLayoutOpen" 
+                                class="flex items-center space-x-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors">
+                            <!-- Current view icon -->
+                            <div x-show="currentView === 'dashboard'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                            </div>
+                            <div x-show="currentView === 'tickets'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div x-show="currentView === 'kanban'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- Dropdown arrow -->
+                            <svg class="w-4 h-4 text-gray-500" :class="mobileLayoutOpen ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div x-show="mobileLayoutOpen" @click.away="mobileLayoutOpen = false"
+                             class="absolute left-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <div class="py-1">
+                                <button @click="currentView = 'dashboard'; mobileLayoutOpen = false" 
+                                        :class="currentView === 'dashboard' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-3 text-sm transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Dashboard</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Overview & stats</div>
+                                    </div>
+                                </button>
+                                
+                                <button @click="currentView = 'tickets'; mobileLayoutOpen = false"
+                                        :class="currentView === 'tickets' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-3 text-sm transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Tickets</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">List & table view</div>
+                                    </div>
+                                </button>
+                                
+                                <button @click="currentView = 'kanban'; mobileLayoutOpen = false"
+                                        :class="currentView === 'kanban' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-3 text-sm transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Kanban</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Board & columns</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Navigation items -->
                 <div class="hidden md:flex items-center space-x-6">
-                    <button @click="currentView = 'dashboard'" 
-                            :class="currentView === 'dashboard' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
-                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                        Dashboard
-                    </button>
-                    <button @click="currentView = 'tickets'" 
-                            :class="currentView === 'tickets' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
-                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                        Tickets
-                    </button>
-                    <button @click="currentView = 'kanban'" 
-                            :class="currentView === 'kanban' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'"
-                            class="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                        Kanban
-                    </button>
+                    <!-- Layout Dropdown -->
+                    <div class="relative" x-data="{ layoutOpen: false }">
+                        <button @click="layoutOpen = !layoutOpen" 
+                                class="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors">
+                            <!-- Current view icon -->
+                            <div x-show="currentView === 'dashboard'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                </svg>
+                            </div>
+                            <div x-show="currentView === 'tickets'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div x-show="currentView === 'kanban'">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                </svg>
+                            </div>
+                            
+                            <!-- Current view text -->
+                            <span class="text-sm font-medium text-gray-900 dark:text-white" 
+                                  x-text="currentView === 'dashboard' ? 'Dashboard' : currentView === 'tickets' ? 'Tickets' : 'Kanban'"></span>
+                            
+                            <!-- Dropdown arrow -->
+                            <svg class="w-4 h-4 text-gray-500" :class="layoutOpen ? 'transform rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <div x-show="layoutOpen" @click.away="layoutOpen = false"
+                             class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                            <div class="py-1">
+                                <button @click="currentView = 'dashboard'; layoutOpen = false" 
+                                        :class="currentView === 'dashboard' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-2 text-sm transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Dashboard</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Overview & statistics</div>
+                                    </div>
+                                </button>
+                                
+                                <button @click="currentView = 'tickets'; layoutOpen = false"
+                                        :class="currentView === 'tickets' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-2 text-sm transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Tickets</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">List & table view</div>
+                                    </div>
+                                </button>
+                                
+                                <button @click="currentView = 'kanban'; layoutOpen = false"
+                                        :class="currentView === 'kanban' ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                                        class="flex items-center space-x-3 w-full px-4 py-2 text-sm transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                    </svg>
+                                    <div>
+                                        <div class="font-medium">Kanban</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">Board & columns</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Export Dropdown -->
                     <div class="relative" x-data="{ exportOpen: false }">
