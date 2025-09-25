@@ -47,9 +47,17 @@
       "action_type": "updated",
       "description": "description changed from \"This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!\" to \"This ticket system now uses GitHub as a database. All changes are stored in JSON files and committed to your repository for true collaboration!\n\nChange\", updated_by changed from \"undefined\" to \"1\"",
       "timestamp": "2025-09-25T17:38:44.714Z"
+    },
+    {
+      "id": 7,
+      "ticket_id": 1,
+      "user_id": 1,
+      "action_type": "updated",
+      "description": "Description updated",
+      "timestamp": "2025-09-25T17:38:45.226Z"
     }
   ],
-  "nextId": 7,
-  "lastUpdated": "2025-09-25T17:38:44.714Z",
+  "nextId": 8,
+  "lastUpdated": "2025-09-25T17:38:45.226Z",
   "updatedBy": "sirhcrd"
 }
