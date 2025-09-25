@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Time Debug Test</title>
+</head>
+<body>
+    <h1>Time Formatting Debug</h1>
+    <div id="results"></div>
+    
+    <script>
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = now - date; // Remove Math.abs to handle future dates
+            
+            // Handle future dates
+            if (diffTime < 0) {
+                return date.toLocaleString();
+            }
+            
+            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+            const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffMinutes < 1) {
+                return 'Just now';
+            } else if (diffMinutes < 60) {
+                return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+            } else if (diffHours < 24) {
+                return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                return `${diffDays} days ago`;
+            } else if (diffDays < 30) {
+                return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) === 1 ? '' : 's'} ago`;
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+        
+        const now = new Date();
+        const results = document.getElementById('results');
+        
+        const tests = [
+            { label: 'Right now', time: now.toISOString() },
+            { label: '30 seconds ago', time: new Date(now.getTime() - 30000).toISOString() },
+            { label: '2 minutes ago', time: new Date(now.getTime() - 2 * 60 * 1000).toISOString() },
+            { label: '1 hour ago', time: new Date(now.getTime() - 60 * 60 * 1000).toISOString() },
+            { label: '25 hours ago (yesterday)', time: new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString() },
+            { label: '48 hours ago', time: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString() },
+        ];
+        
+        tests.forEach(test => {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${test.label}:</strong> ${formatDate(test.time)} <em>(${test.time})</em>`;
+            results.appendChild(div);
+        });
+    </script>
+</body>
+</html>
+</html>

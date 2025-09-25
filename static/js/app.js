@@ -27,8 +27,10 @@ document.addEventListener('alpine:init', () => {
         // Editing state
         editingTitle: false,
         editingDescription: false,
+        editingAssignee: false,
         editTitle: '',
         editDescription: '',
+        editAssignee: '',
         
         // Initialize
         init() {
@@ -150,6 +152,7 @@ document.addEventListener('alpine:init', () => {
             // Reset editing states
             this.editingTitle = false;
             this.editingDescription = false;
+            this.editingAssignee = false;
         },
         
         resetNewTicketForm() {
@@ -179,6 +182,9 @@ document.addEventListener('alpine:init', () => {
                     description: description,
                     timestamp: new Date().toISOString()
                 });
+                
+                // Sort activities by timestamp (newest first)
+                ticket.activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 ticket.updated_at = new Date().toISOString();
                 this.saveToStorage();
@@ -226,6 +232,21 @@ document.addEventListener('alpine:init', () => {
                 ticket.priority = newPriority;
                 this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
             }
+        },
+        
+        // Assignee editing
+        saveAssignee() {
+            const newAssignee = this.editAssignee.trim();
+            const currentAssignee = this.selectedTicket.assignee || '';
+            
+            if (newAssignee !== currentAssignee) {
+                const oldAssignee = currentAssignee || 'Unassigned';
+                const newAssigneeDisplay = newAssignee || 'Unassigned';
+                
+                this.selectedTicket.assignee = newAssignee;
+                this.addActivity(this.selectedTicket.id, `Assignee changed from ${oldAssignee} to ${newAssigneeDisplay}`);
+            }
+            this.editingAssignee = false;
         },
         
         // Statistics
