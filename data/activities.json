@@ -15,8 +15,17 @@
       "action_type": "created",
       "description": "Ticket created by Current User",
       "timestamp": "2025-09-25T11:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "ticket_id": 3,
+      "user_id": 1,
+      "action_type": "created",
+      "description": "Ticket created",
+      "timestamp": "2025-09-25T17:16:38.812Z"
     }
   ],
-  "nextId": 3,
-  "lastUpdated": "2025-09-25T15:30:00.000Z"
+  "nextId": 4,
+  "lastUpdated": "2025-09-25T17:16:38.812Z",
+  "updatedBy": "sirhcrd"
 }
