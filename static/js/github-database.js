@@ -1,11 +1,18 @@
 // FlowDesk GitHub JSON Database Module with OAuth
 class GitHubDatabase {
     constructor() {
-        this.owner = 'sirhcrd'; // GitHub username
-        this.repo = 'flowdesk-ticket-system'; // Repository name
+        // Default to user's data repository (separate from code repository)
+        this.owner = null; // Will be set from authenticated user
+        this.repo = null; // Will be configured by user
         this.branch = 'main';
-        this.baseURL = `https://api.github.com/repos/${this.owner}/${this.repo}/contents/data`;
+        this.baseURL = null; // Will be constructed after configuration
         this.initialized = false;
+        
+        // Configuration
+        this.config = {
+            dataRepo: localStorage.getItem('flowdesk_data_repo') || null,
+            useDefaultRepo: localStorage.getItem('flowdesk_use_default_repo') === 'true'
+        };
         
         // OAuth authentication
         this.auth = window.githubAuth;
@@ -20,6 +27,115 @@ class GitHubDatabase {
         
         // File SHAs for updates (required by GitHub API)
         this.fileSHAs = {};
+    }
+
+    // Configure data repository
+    configureRepository(owner, repo) {
+        this.owner = owner;
+        this.repo = repo;
+        this.baseURL = `https://api.github.com/repos/${this.owner}/${this.repo}/contents/data`;
+        
+        // Save configuration
+        localStorage.setItem('flowdesk_data_repo', repo);
+        console.log(`🔧 Configured data repository: ${owner}/${repo}`);
+    }
+
+    // Get or prompt for data repository configuration
+    async ensureRepositoryConfigured() {
+        if (this.baseURL) return true;
+        
+        // Get authenticated user
+        const user = this.auth?.getUser();
+        if (!user) {
+            throw new Error('GitHub authentication required');
+        }
+        
+        this.owner = user.login;
+        
+        // Check if we have a saved data repo configuration
+        if (this.config.dataRepo) {
+            this.configureRepository(this.owner, this.config.dataRepo);
+            return true;
+        }
+        
+        // Default data repository name
+        const defaultDataRepo = 'flowdesk-data';
+        
+        // Ask user if they want to use the default data repo
+        const useDefault = confirm(
+            `FlowDesk needs a GitHub repository to store your ticket data.\n\n` +
+            `Would you like to use: ${this.owner}/${defaultDataRepo}\n\n` +
+            `Click OK to use this repository (it will be created if it doesn't exist)\n` +
+            `Click Cancel to specify a different repository name`
+        );
+        
+        if (useDefault) {
+            this.configureRepository(this.owner, defaultDataRepo);
+            return true;
+        } else {
+            // Ask for custom repository name
+            const customRepo = prompt(
+                'Enter the name of your GitHub repository for storing FlowDesk data:\n\n' +
+                '(The repository will be created if it doesn\'t exist)',
+                'flowdesk-data'
+            );
+            
+            if (customRepo && customRepo.trim()) {
+                this.configureRepository(this.owner, customRepo.trim());
+                return true;
+            } else {
+                throw new Error('Data repository configuration cancelled');
+            }
+        }
+    }
+
+    // Create data repository if it doesn't exist
+    async ensureDataRepositoryExists() {
+        if (!this.baseURL) {
+            throw new Error('Repository not configured');
+        }
+        
+        try {
+            // Check if repository exists by trying to get its info
+            const repoUrl = `https://api.github.com/repos/${this.owner}/${this.repo}`;
+            const response = await this.auth.makeAuthenticatedRequest(repoUrl);
+            
+            if (response.ok) {
+                console.log(`✅ Data repository ${this.owner}/${this.repo} exists`);
+                return true;
+            }
+        } catch (error) {
+            console.log(`📁 Repository ${this.owner}/${this.repo} doesn't exist, creating it...`);
+        }
+        
+        try {
+            // Create the repository
+            const createRepoUrl = 'https://api.github.com/user/repos';
+            const repoData = {
+                name: this.repo,
+                description: 'FlowDesk ticket management system data storage',
+                private: false, // You can change this to true if you want private data
+                auto_init: true,
+                gitignore_template: null,
+                license_template: null
+            };
+            
+            const createResponse = await this.auth.makeAuthenticatedRequest(createRepoUrl, {
+                method: 'POST',
+                body: JSON.stringify(repoData)
+            });
+            
+            if (createResponse.ok) {
+                console.log(`✅ Created data repository: ${this.owner}/${this.repo}`);
+                return true;
+            } else {
+                const errorData = await createResponse.json();
+                throw new Error(`Failed to create repository: ${errorData.message}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error creating data repository:`, error);
+            throw error;
+        }
     }
 
     async init() {
@@ -40,6 +156,10 @@ class GitHubDatabase {
 
     async loadAllData() {
         console.log('📁 Loading all data from GitHub...');
+        
+        // Ensure repository is configured and exists
+        await this.ensureRepositoryConfigured();
+        await this.ensureDataRepositoryExists();
         
         const files = ['tickets.json', 'users.json', 'columns.json', 'activities.json'];
         
@@ -97,6 +217,9 @@ class GitHubDatabase {
         if (!this.auth || !this.auth.isAuthenticated()) {
             throw new Error('GitHub authentication required for saving data. Please login with GitHub.');
         }
+        
+        // Ensure repository is configured
+        await this.ensureRepositoryConfigured();
         
         const url = `${this.baseURL}/${filename}`;
         

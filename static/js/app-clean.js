@@ -498,6 +498,8 @@ document.addEventListener('alpine:init', () => {
 
         async moveTicketToColumn(ticketId, newColumnId, newPosition) {
             try {
+                console.log(`📦 Moving ticket ${ticketId} to column ${newColumnId}`);
+                
                 await window.githubDB.updateTicket(ticketId, {
                     kanban_column_id: newColumnId,
                     kanban_position: newPosition,
@@ -510,11 +512,20 @@ document.addEventListener('alpine:init', () => {
                     await window.githubDB.addActivity(ticketId, this.currentUser.id, 'moved', `Ticket moved to ${column.name}`);
                 }
                 
-                await this.loadDataFromGitHub();
+                // Update local ticket data without full reload to keep Sortable working
+                const ticket = this.tickets.find(t => t.id === ticketId);
+                if (ticket) {
+                    ticket.kanban_column_id = newColumnId;
+                    ticket.kanban_position = newPosition;
+                    ticket.kanban_column_name = column?.name || 'Unknown';
+                    ticket.kanban_column_color = column?.color || '#6B7280';
+                }
+                
                 console.log('✅ Ticket moved successfully!');
             } catch (error) {
                 console.error('❌ Error moving ticket:', error);
-                // Reload to reset positions
+                alert('Failed to move ticket: ' + error.message);
+                // Only reload on error
                 await this.loadDataFromGitHub();
             }
         },
@@ -576,7 +587,9 @@ document.addEventListener('alpine:init', () => {
                 ].join(','))
             ].join('\\n');
             
-            this.downloadFile(csvContent, `flowdesk-tickets-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
+            const filename = `flowdesk-tickets-${timestamp[0]}_${timestamp[1].split('.')[0]}.csv`;
+            this.downloadFile(csvContent, filename, 'text/csv');
         },
 
         exportToJSON() {
@@ -596,7 +609,9 @@ document.addEventListener('alpine:init', () => {
             };
             
             const jsonContent = JSON.stringify(exportData, null, 2);
-            this.downloadFile(jsonContent, `flowdesk-export-${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
+            const filename = `flowdesk-export-${timestamp[0]}_${timestamp[1].split('.')[0]}.json`;
+            this.downloadFile(jsonContent, filename, 'application/json');
         },
 
         exportToXLSX() {
@@ -626,7 +641,9 @@ document.addEventListener('alpine:init', () => {
                 ].join('\t'))
             ].join('\n');
             
-            this.downloadFile(tsvContent, `flowdesk-tickets-${new Date().toISOString().split('T')[0]}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
+            const filename = `flowdesk-tickets-${timestamp[0]}_${timestamp[1].split('.')[0]}.xlsx`;
+            this.downloadFile(tsvContent, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         },
 
         exportToDatabase() {
@@ -673,7 +690,9 @@ document.addEventListener('alpine:init', () => {
                 })
             ].join('\n');
             
-            this.downloadFile(sqlContent, `flowdesk-database-${new Date().toISOString().split('T')[0]}.sql`, 'application/sql');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T');
+            const filename = `flowdesk-database-${timestamp[0]}_${timestamp[1].split('.')[0]}.sql`;
+            this.downloadFile(sqlContent, filename, 'application/sql');
         },
 
         downloadFile(content, filename, mimeType) {
