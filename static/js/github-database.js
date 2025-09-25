@@ -213,7 +213,20 @@ class GitHubDatabase {
 
     // CRUD operations
     async createTicket(ticketData) {
+        // Ensure cache is initialized
+        if (!this.cache.tickets) {
+            console.warn('⚠️ Tickets cache not initialized, creating empty structure');
+            this.cache.tickets = this.getEmptyStructure('tickets.json');
+        }
+        
         const tickets = this.cache.tickets;
+        
+        // Ensure nextId exists
+        if (typeof tickets.nextId !== 'number') {
+            tickets.nextId = Math.max(...(tickets.tickets || []).map(t => t.id || 0), 0) + 1;
+            console.log(`🔢 Initialized nextId to ${tickets.nextId}`);
+        }
+        
         const newTicket = {
             id: tickets.nextId++,
             ...ticketData,
@@ -222,6 +235,8 @@ class GitHubDatabase {
         };
         
         tickets.tickets.push(newTicket);
+        tickets.lastUpdated = new Date().toISOString();
+        
         await this.saveFile('tickets.json', tickets);
         
         // Add creation activity
@@ -276,7 +291,20 @@ class GitHubDatabase {
     }
 
     async createUser(userData) {
+        // Ensure cache is initialized
+        if (!this.cache.users) {
+            console.warn('⚠️ Users cache not initialized, creating empty structure');
+            this.cache.users = this.getEmptyStructure('users.json');
+        }
+        
         const users = this.cache.users;
+        
+        // Ensure nextId exists
+        if (typeof users.nextId !== 'number') {
+            users.nextId = Math.max(...(users.users || []).map(u => u.id || 0), 0) + 1;
+            console.log(`🔢 Initialized users nextId to ${users.nextId}`);
+        }
+        
         const newUser = {
             id: users.nextId++,
             ...userData,
@@ -284,12 +312,27 @@ class GitHubDatabase {
         };
         
         users.users.push(newUser);
+        users.lastUpdated = new Date().toISOString();
+        
         await this.saveFile('users.json', users);
         return newUser;
     }
 
     async addActivity(ticketId, userId, actionType, description) {
+        // Ensure cache is initialized
+        if (!this.cache.activities) {
+            console.warn('⚠️ Activities cache not initialized, creating empty structure');
+            this.cache.activities = this.getEmptyStructure('activities.json');
+        }
+        
         const activities = this.cache.activities;
+        
+        // Ensure nextId exists
+        if (typeof activities.nextId !== 'number') {
+            activities.nextId = Math.max(...(activities.activities || []).map(a => a.id || 0), 0) + 1;
+            console.log(`🔢 Initialized activities nextId to ${activities.nextId}`);
+        }
+        
         const newActivity = {
             id: activities.nextId++,
             ticket_id: parseInt(ticketId),
@@ -300,13 +343,28 @@ class GitHubDatabase {
         };
         
         activities.activities.push(newActivity);
+        activities.lastUpdated = new Date().toISOString();
+        
         await this.saveFile('activities.json', activities);
         return newActivity;
     }
 
     // Column management
     async createColumn(columnData) {
+        // Ensure cache is initialized
+        if (!this.cache.columns) {
+            console.warn('⚠️ Columns cache not initialized, creating empty structure');
+            this.cache.columns = this.getEmptyStructure('columns.json');
+        }
+        
         const columns = this.cache.columns;
+        
+        // Ensure nextId exists
+        if (typeof columns.nextId !== 'number') {
+            columns.nextId = Math.max(...(columns.columns || []).map(c => c.id || 0), 0) + 1;
+            console.log(`🔢 Initialized columns nextId to ${columns.nextId}`);
+        }
+        
         const maxPosition = Math.max(...columns.columns.map(c => c.position), -1);
         
         const newColumn = {
@@ -317,6 +375,8 @@ class GitHubDatabase {
         };
         
         columns.columns.push(newColumn);
+        columns.lastUpdated = new Date().toISOString();
+        
         await this.saveFile('columns.json', columns);
         return newColumn;
     }
