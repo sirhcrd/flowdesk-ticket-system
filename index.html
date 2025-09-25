@@ -235,7 +235,7 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4">
-                                            <select x-model="ticket.status" @change="updateTicketStatus(ticket.id, ticket.status)" 
+                                            <select x-model="ticket.status" @change="updateTicketStatus(ticket.id, $event.target.value)" 
                                                     :class="getStatusColor(ticket.status)"
                                                     class="text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-blue-500">
                                                 <option value="open">Open</option>
@@ -373,7 +373,7 @@
                         <!-- Status -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
-                            <select x-model="selectedTicket.status" @change="updateTicketStatus(selectedTicket.id, selectedTicket.status)" 
+                            <select x-model="selectedTicket.status" @change="updateTicketStatus(selectedTicket.id, $event.target.value)" 
                                     :class="getStatusColor(selectedTicket?.status)"
                                     class="w-full text-sm font-medium px-3 py-2 rounded-md border-0 focus:ring-2 focus:ring-blue-500">
                                 <option value="open">Open</option>
@@ -386,7 +386,7 @@
                         <!-- Priority -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
-                            <select x-model="selectedTicket.priority" @change="updateTicketPriority(selectedTicket.id, selectedTicket.priority)" 
+                            <select x-model="selectedTicket.priority" @change="updateTicketPriority(selectedTicket.id, $event.target.value)" 
                                     :class="getPriorityColor(selectedTicket?.priority)"
                                     class="w-full text-sm font-medium px-3 py-2 rounded-md border-0 focus:ring-2 focus:ring-blue-500">
                                 <option value="low">Low</option>

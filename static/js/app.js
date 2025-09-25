@@ -62,14 +62,14 @@ document.addEventListener('alpine:init', () => {
                     priority: 'medium',
                     assignee: 'Admin',
                     creator: 'System',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+                    updated_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
                     tags: ['welcome', 'demo'],
                     activities: [
                         {
                             id: 1,
                             description: 'Ticket created by System',
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date(Date.now() - 86400000).toISOString() // Yesterday
                         }
                     ]
                 },
@@ -131,15 +131,21 @@ document.addEventListener('alpine:init', () => {
         },
         
         updateTicketStatus(ticketId, newStatus) {
-            console.log('Updating status for ticket:', ticketId, 'to:', newStatus);
+            console.log('🔄 STATUS UPDATE CALLED - Ticket ID:', ticketId, 'New Status:', newStatus);
             const ticket = this.tickets.find(t => t.id === ticketId);
-            if (ticket && ticket.status !== newStatus) {
-                const oldStatus = ticket.status;
-                ticket.status = newStatus;
-                console.log('Status changed from:', oldStatus, 'to:', newStatus);
-                this.addActivity(ticketId, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+            console.log('🎫 Found ticket:', ticket);
+            if (ticket) {
+                console.log('📊 Current status:', ticket.status, 'vs New status:', newStatus);
+                if (ticket.status !== newStatus) {
+                    const oldStatus = ticket.status;
+                    ticket.status = newStatus;
+                    console.log('✅ Status changed from:', oldStatus, 'to:', newStatus);
+                    this.addActivity(ticketId, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+                } else {
+                    console.log('⚠️ No change needed - same status');
+                }
             } else {
-                console.log('No status change needed or ticket not found');
+                console.log('❌ Ticket not found for ID:', ticketId);
             }
         },
         
@@ -246,15 +252,21 @@ document.addEventListener('alpine:init', () => {
         
         // Priority editing
         updateTicketPriority(ticketId, newPriority) {
-            console.log('Updating priority for ticket:', ticketId, 'to:', newPriority);
+            console.log('🔄 PRIORITY UPDATE CALLED - Ticket ID:', ticketId, 'New Priority:', newPriority);
             const ticket = this.tickets.find(t => t.id === ticketId);
-            if (ticket && ticket.priority !== newPriority) {
-                const oldPriority = ticket.priority;
-                ticket.priority = newPriority;
-                console.log('Priority changed from:', oldPriority, 'to:', newPriority);
-                this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
+            console.log('🎫 Found ticket:', ticket);
+            if (ticket) {
+                console.log('📊 Current priority:', ticket.priority, 'vs New priority:', newPriority);
+                if (ticket.priority !== newPriority) {
+                    const oldPriority = ticket.priority;
+                    ticket.priority = newPriority;
+                    console.log('✅ Priority changed from:', oldPriority, 'to:', newPriority);
+                    this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
+                } else {
+                    console.log('⚠️ No change needed - same priority');
+                }
             } else {
-                console.log('No priority change needed or ticket not found');
+                console.log('❌ Ticket not found for ID:', ticketId);
             }
         },
         
