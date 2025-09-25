@@ -24,6 +24,12 @@ document.addEventListener('alpine:init', () => {
         selectedTicket: null,
         showTicketDetail: false,
         
+        // Editing state
+        editingTitle: false,
+        editingDescription: false,
+        editTitle: '',
+        editDescription: '',
+        
         // Initialize
         init() {
             // Load sample data if first time
@@ -56,7 +62,14 @@ document.addEventListener('alpine:init', () => {
                     creator: 'System',
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
-                    tags: ['welcome', 'demo']
+                    tags: ['welcome', 'demo'],
+                    activities: [
+                        {
+                            id: 1,
+                            description: 'Ticket created by System',
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
                 },
                 {
                     id: 2,
@@ -68,7 +81,19 @@ document.addEventListener('alpine:init', () => {
                     creator: 'System',
                     created_at: new Date(Date.now() - 86400000).toISOString(), // Yesterday
                     updated_at: new Date().toISOString(),
-                    tags: ['feature', 'export']
+                    tags: ['feature', 'export'],
+                    activities: [
+                        {
+                            id: 1,
+                            description: 'Ticket created by System',
+                            timestamp: new Date(Date.now() - 86400000).toISOString()
+                        },
+                        {
+                            id: 2,
+                            description: 'Status changed from open to resolved',
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
                 }
             ];
             this.nextId = 3;
@@ -87,7 +112,14 @@ document.addEventListener('alpine:init', () => {
                 creator: 'Current User',
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                tags: this.newTicket.tags ? this.newTicket.tags.split(',').map(t => t.trim()) : []
+                tags: this.newTicket.tags ? this.newTicket.tags.split(',').map(t => t.trim()) : [],
+                activities: [
+                    {
+                        id: 1,
+                        description: 'Ticket created by Current User',
+                        timestamp: new Date().toISOString()
+                    }
+                ]
             };
             
             this.tickets.unshift(ticket);
@@ -98,10 +130,10 @@ document.addEventListener('alpine:init', () => {
         
         updateTicketStatus(ticketId, newStatus) {
             const ticket = this.tickets.find(t => t.id === ticketId);
-            if (ticket) {
+            if (ticket && ticket.status !== newStatus) {
+                const oldStatus = ticket.status;
                 ticket.status = newStatus;
-                ticket.updated_at = new Date().toISOString();
-                this.saveToStorage();
+                this.addActivity(ticketId, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
             }
         },
         
@@ -115,6 +147,9 @@ document.addEventListener('alpine:init', () => {
         viewTicket(ticket) {
             this.selectedTicket = ticket;
             this.showTicketDetail = true;
+            // Reset editing states
+            this.editingTitle = false;
+            this.editingDescription = false;
         },
         
         resetNewTicketForm() {
@@ -125,6 +160,72 @@ document.addEventListener('alpine:init', () => {
                 assignee: 'Admin',
                 tags: ''
             };
+        },
+        
+        // Activity logging
+        addActivity(ticketId, description) {
+            const ticket = this.tickets.find(t => t.id === ticketId);
+            if (ticket) {
+                if (!ticket.activities) {
+                    ticket.activities = [];
+                }
+                
+                const activityId = (ticket.activities.length > 0) 
+                    ? Math.max(...ticket.activities.map(a => a.id)) + 1 
+                    : 1;
+                
+                ticket.activities.push({
+                    id: activityId,
+                    description: description,
+                    timestamp: new Date().toISOString()
+                });
+                
+                ticket.updated_at = new Date().toISOString();
+                this.saveToStorage();
+            }
+        },
+        
+        // Title editing
+        saveTitle() {
+            if (this.editTitle && this.editTitle !== this.selectedTicket.title) {
+                const oldTitle = this.selectedTicket.title;
+                this.selectedTicket.title = this.editTitle;
+                this.addActivity(this.selectedTicket.id, `Title changed from "${oldTitle}" to "${this.editTitle}"`);
+            }
+            this.editingTitle = false;
+        },
+        
+        // Description editing
+        saveDescription() {
+            if (this.editDescription !== this.selectedTicket.description) {
+                const hasOldDescription = this.selectedTicket.description && this.selectedTicket.description.trim();
+                const hasNewDescription = this.editDescription && this.editDescription.trim();
+                
+                let activityDesc = '';
+                if (!hasOldDescription && hasNewDescription) {
+                    activityDesc = 'Description added';
+                } else if (hasOldDescription && !hasNewDescription) {
+                    activityDesc = 'Description removed';
+                } else if (hasOldDescription && hasNewDescription) {
+                    activityDesc = 'Description updated';
+                }
+                
+                this.selectedTicket.description = this.editDescription;
+                if (activityDesc) {
+                    this.addActivity(this.selectedTicket.id, activityDesc);
+                }
+            }
+            this.editingDescription = false;
+        },
+        
+        // Priority editing
+        updateTicketPriority(ticketId, newPriority) {
+            const ticket = this.tickets.find(t => t.id === ticketId);
+            if (ticket && ticket.priority !== newPriority) {
+                const oldPriority = ticket.priority;
+                ticket.priority = newPriority;
+                this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
+            }
         },
         
         // Statistics
