@@ -23,9 +23,17 @@
       "action_type": "created",
       "description": "Ticket created",
       "timestamp": "2025-09-25T17:16:38.812Z"
+    },
+    {
+      "id": 4,
+      "ticket_id": 3,
+      "user_id": 1,
+      "action_type": "updated",
+      "description": "priority changed from \"high\" to \"medium\", updated_by changed from \"undefined\" to \"1\"",
+      "timestamp": "2025-09-25T17:16:49.027Z"
     }
   ],
-  "nextId": 4,
-  "lastUpdated": "2025-09-25T17:16:38.812Z",
+  "nextId": 5,
+  "lastUpdated": "2025-09-25T17:16:49.027Z",
   "updatedBy": "sirhcrd"
 }
