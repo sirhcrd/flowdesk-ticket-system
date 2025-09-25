@@ -10,6 +10,7 @@ document.addEventListener('alpine:init', () => {
         tickets: [],
         users: [],
         currentUser: null,
+        kanbanColumns: [],
         
         // Forms
         newTicket: {
@@ -23,6 +24,8 @@ document.addEventListener('alpine:init', () => {
         // UI State
         showCreateTicket: false,
         showAddUser: false,
+        showAddColumn: false,
+        showColumnManager: false,
         selectedTicket: null,
         showTicketDetail: false,
         
@@ -53,6 +56,23 @@ document.addEventListener('alpine:init', () => {
             '#84CC16', // Lime
             '#EC4899', // Pink
             '#6B7280'  // Gray
+        ],
+        
+        // Column management
+        newColumn: {
+            name: '',
+            color: '#6B7280'
+        },
+        
+        columnColors: [
+            '#6B7280', // Gray
+            '#3B82F6', // Blue
+            '#10B981', // Green
+            '#F59E0B', // Yellow
+            '#EF4444', // Red
+            '#8B5CF6', // Purple
+            '#F97316', // Orange
+            '#06B6D4', // Cyan
         ],
         
         // Initialize
@@ -94,10 +114,11 @@ document.addEventListener('alpine:init', () => {
                 }
             }
             
-            // Load tickets
+            // Load tickets and kanban columns
             this.tickets = window.flowDeskDB.getAllTickets();
+            this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
             
-            console.log(`📋 Loaded ${this.tickets.length} tickets and ${this.users.length} users`);
+            console.log(`📋 Loaded ${this.tickets.length} tickets, ${this.users.length} users, and ${this.kanbanColumns.length} kanban columns`);
         },
         
         // Fallback data loading (in case database fails)
@@ -520,6 +541,192 @@ document.addEventListener('alpine:init', () => {
             } catch (error) {
                 console.error('❌ Error saving ticket:', error);
                 alert('Error saving changes: ' + error.message);
+            }
+        },
+        
+        // Kanban Board Functions
+        getColumnTickets(columnId) {
+            return this.tickets.filter(ticket => ticket.kanban_column_id === columnId)
+                             .sort((a, b) => (a.kanban_position || 0) - (b.kanban_position || 0));
+        },
+        
+        getColumnTicketCount(columnId) {
+            return this.getColumnTickets(columnId).length;
+        },
+        
+        async addColumn() {
+            if (!this.newColumn.name.trim()) return;
+            
+            console.log('➕ Adding new column:', this.newColumn.name);
+            
+            try {
+                // Get max position
+                const maxPosition = Math.max(...this.kanbanColumns.map(c => c.position), -1);
+                
+                const success = window.flowDeskDB.exec(
+                    'INSERT INTO kanban_columns (name, position, color) VALUES (?, ?, ?)',
+                    [this.newColumn.name.trim(), maxPosition + 1, this.newColumn.color]
+                );
+                
+                if (success) {
+                    this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
+                    this.newColumn = { name: '', color: '#6B7280' };
+                    this.showAddColumn = false;
+                    console.log('✅ Column added successfully!');
+                } else {
+                    alert('Failed to add column. Please try again.');
+                }
+            } catch (error) {
+                console.error('❌ Error adding column:', error);
+                alert('Error adding column: ' + error.message);
+            }
+        },
+        
+        async updateColumnName(columnId, newName) {
+            if (!newName.trim()) return;
+            
+            try {
+                const success = window.flowDeskDB.exec(
+                    'UPDATE kanban_columns SET name = ? WHERE id = ?',
+                    [newName.trim(), columnId]
+                );
+                
+                if (success) {
+                    this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
+                    console.log('✅ Column name updated!');
+                }
+            } catch (error) {
+                console.error('❌ Error updating column name:', error);
+            }
+        },
+        
+        async deleteColumn(columnId) {
+            const column = this.kanbanColumns.find(c => c.id === columnId);
+            const ticketCount = this.getColumnTicketCount(columnId);
+            
+            if (ticketCount > 0) {
+                if (!confirm(`This column contains ${ticketCount} ticket(s). Are you sure you want to delete it? The tickets will be moved to the first column.`)) {
+                    return;
+                }
+            } else if (!confirm(`Are you sure you want to delete the "${column?.name}" column?`)) {
+                return;
+            }
+            
+            try {
+                // Move tickets to first column
+                if (ticketCount > 0) {
+                    const firstColumn = this.kanbanColumns.find(c => c.position === 0);
+                    if (firstColumn) {
+                        window.flowDeskDB.exec(
+                            'UPDATE tickets SET kanban_column_id = ? WHERE kanban_column_id = ?',
+                            [firstColumn.id, columnId]
+                        );
+                    }
+                }
+                
+                // Delete column
+                const success = window.flowDeskDB.exec('DELETE FROM kanban_columns WHERE id = ?', [columnId]);
+                
+                if (success) {
+                    this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
+                    this.tickets = window.flowDeskDB.getAllTickets();
+                    console.log('✅ Column deleted successfully!');
+                }
+            } catch (error) {
+                console.error('❌ Error deleting column:', error);
+                alert('Error deleting column: ' + error.message);
+            }
+        },
+        
+        async moveColumnUp(index) {
+            if (index === 0) return;
+            
+            const column = this.kanbanColumns[index];
+            const prevColumn = this.kanbanColumns[index - 1];
+            
+            try {
+                // Swap positions
+                window.flowDeskDB.exec('UPDATE kanban_columns SET position = ? WHERE id = ?', [prevColumn.position, column.id]);
+                window.flowDeskDB.exec('UPDATE kanban_columns SET position = ? WHERE id = ?', [column.position, prevColumn.id]);
+                
+                this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
+            } catch (error) {
+                console.error('❌ Error moving column:', error);
+            }
+        },
+        
+        async moveColumnDown(index) {
+            if (index === this.kanbanColumns.length - 1) return;
+            
+            const column = this.kanbanColumns[index];
+            const nextColumn = this.kanbanColumns[index + 1];
+            
+            try {
+                // Swap positions
+                window.flowDeskDB.exec('UPDATE kanban_columns SET position = ? WHERE id = ?', [nextColumn.position, column.id]);
+                window.flowDeskDB.exec('UPDATE kanban_columns SET position = ? WHERE id = ?', [column.position, nextColumn.id]);
+                
+                this.kanbanColumns = window.flowDeskDB.getKanbanColumns();
+            } catch (error) {
+                console.error('❌ Error moving column:', error);
+            }
+        },
+        
+        // Initialize SortableJS for drag & drop
+        initSortable(element, columnId) {
+            const self = this;
+            
+            new Sortable(element, {
+                group: 'kanban',
+                animation: 150,
+                ghostClass: 'opacity-50',
+                chosenClass: 'bg-blue-100 dark:bg-blue-900',
+                dragClass: 'rotate-3 shadow-xl',
+                
+                onEnd: function(evt) {
+                    const ticketId = parseInt(evt.item.dataset.ticketId);
+                    const newColumnId = parseInt(evt.to.dataset.columnId);
+                    const newPosition = evt.newIndex;
+                    
+                    console.log(`🔄 Moving ticket ${ticketId} to column ${newColumnId} at position ${newPosition}`);
+                    
+                    self.moveTicketToColumn(ticketId, newColumnId, newPosition);
+                }
+            });
+        },
+        
+        async moveTicketToColumn(ticketId, newColumnId, newPosition) {
+            try {
+                // Update ticket's column and position
+                const success = window.flowDeskDB.exec(`
+                    UPDATE tickets 
+                    SET kanban_column_id = ?, kanban_position = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `, [newColumnId, newPosition, ticketId]);
+                
+                if (success) {
+                    // Add activity log
+                    const column = this.kanbanColumns.find(c => c.id === newColumnId);
+                    if (column && this.currentUser) {
+                        window.flowDeskDB.exec(`
+                            INSERT INTO activities (ticket_id, user_id, action_type, description)
+                            VALUES (?, ?, 'moved', ?)
+                        `, [ticketId, this.currentUser.id, `Ticket moved to ${column.name}`]);
+                    }
+                    
+                    // Reload tickets
+                    this.tickets = window.flowDeskDB.getAllTickets();
+                    
+                    console.log('✅ Ticket moved successfully!');
+                } else {
+                    console.error('❌ Failed to move ticket');
+                    // Reload to reset positions
+                    this.tickets = window.flowDeskDB.getAllTickets();
+                }
+            } catch (error) {
+                console.error('❌ Error moving ticket:', error);
+                // Reload to reset positions
+                this.tickets = window.flowDeskDB.getAllTickets();
             }
         },
         
