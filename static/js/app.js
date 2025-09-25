@@ -131,11 +131,15 @@ document.addEventListener('alpine:init', () => {
         },
         
         updateTicketStatus(ticketId, newStatus) {
+            console.log('Updating status for ticket:', ticketId, 'to:', newStatus);
             const ticket = this.tickets.find(t => t.id === ticketId);
             if (ticket && ticket.status !== newStatus) {
                 const oldStatus = ticket.status;
                 ticket.status = newStatus;
+                console.log('Status changed from:', oldStatus, 'to:', newStatus);
                 this.addActivity(ticketId, `Status changed from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`);
+            } else {
+                console.log('No status change needed or ticket not found');
             }
         },
         
@@ -167,6 +171,7 @@ document.addEventListener('alpine:init', () => {
         
         // Activity logging
         addActivity(ticketId, description) {
+            console.log('Adding activity:', description, 'to ticket:', ticketId);
             const ticket = this.tickets.find(t => t.id === ticketId);
             if (ticket) {
                 if (!ticket.activities) {
@@ -177,17 +182,28 @@ document.addEventListener('alpine:init', () => {
                     ? Math.max(...ticket.activities.map(a => a.id)) + 1 
                     : 1;
                 
-                ticket.activities.push({
+                const newActivity = {
                     id: activityId,
                     description: description,
                     timestamp: new Date().toISOString()
-                });
+                };
+                
+                ticket.activities.push(newActivity);
                 
                 // Sort activities by timestamp (newest first)
                 ticket.activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 ticket.updated_at = new Date().toISOString();
+                
+                // Update selectedTicket if it's the same ticket
+                if (this.selectedTicket && this.selectedTicket.id === ticketId) {
+                    this.selectedTicket = ticket; // Force reactivity update
+                }
+                
                 this.saveToStorage();
+                console.log('Activity added successfully. Latest activity:', newActivity);
+            } else {
+                console.error('Ticket not found for ID:', ticketId);
             }
         },
         
@@ -203,6 +219,7 @@ document.addEventListener('alpine:init', () => {
         
         // Description editing
         saveDescription() {
+            console.log('Saving description. Old:', this.selectedTicket.description, 'New:', this.editDescription);
             if (this.editDescription !== this.selectedTicket.description) {
                 const hasOldDescription = this.selectedTicket.description && this.selectedTicket.description.trim();
                 const hasNewDescription = this.editDescription && this.editDescription.trim();
@@ -218,19 +235,26 @@ document.addEventListener('alpine:init', () => {
                 
                 this.selectedTicket.description = this.editDescription;
                 if (activityDesc) {
+                    console.log('Adding activity:', activityDesc);
                     this.addActivity(this.selectedTicket.id, activityDesc);
                 }
+            } else {
+                console.log('No description change detected');
             }
             this.editingDescription = false;
         },
         
         // Priority editing
         updateTicketPriority(ticketId, newPriority) {
+            console.log('Updating priority for ticket:', ticketId, 'to:', newPriority);
             const ticket = this.tickets.find(t => t.id === ticketId);
             if (ticket && ticket.priority !== newPriority) {
                 const oldPriority = ticket.priority;
                 ticket.priority = newPriority;
+                console.log('Priority changed from:', oldPriority, 'to:', newPriority);
                 this.addActivity(ticketId, `Priority changed from ${oldPriority} to ${newPriority}`);
+            } else {
+                console.log('No priority change needed or ticket not found');
             }
         },
         
