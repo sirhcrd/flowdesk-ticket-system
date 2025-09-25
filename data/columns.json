@@ -13,9 +13,16 @@
       "color": "#F59E0B",
       "position": 1,
       "created_at": "2025-09-25T18:28:30.675Z"
+    },
+    {
+      "id": 3,
+      "name": "In Progress",
+      "color": "#F59E0B",
+      "position": 2,
+      "created_at": "2025-09-25T18:28:43.099Z"
     }
   ],
-  "nextId": 3,
-  "lastUpdated": "2025-09-25T18:28:30.675Z",
+  "nextId": 4,
+  "lastUpdated": "2025-09-25T18:28:43.099Z",
   "updatedBy": "sirhcrd"
 }
