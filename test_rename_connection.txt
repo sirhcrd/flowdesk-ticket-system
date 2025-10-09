@@ -1,5 +1,0 @@
-Test file to verify Git repository connection after folder rename.
-Created on: October 9, 2025
-Purpose: Ensuring the flowdesk-ticket-system repository still works correctly after being renamed.
-
-This file can be deleted after confirming the connection works.
